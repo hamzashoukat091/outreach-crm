@@ -1,0 +1,61 @@
+# ---- Secrets ----
+# .env holds ANTHROPIC_API_KEY. Never commit it; .env.example is the template.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---- Node / Next.js ----
+node_modules/
+.next/
+out/
+build/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# ---- Package manager logs ----
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ---- Prospect data ----
+# Enrichment exports contain personal contact data (names, work emails,
+# phone numbers). Keep them out of the repo. Commit only sample/ files that
+# have been deliberately anonymized.
+*.csv
+!sample*.csv
+!**/sample/*.csv
+
+# ---- Editors / OS ----
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Local tooling ----
+.claude/

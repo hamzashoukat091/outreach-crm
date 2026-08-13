@@ -1,0 +1,82 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-outreach}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-outreach}
+      POSTGRES_DB: ${POSTGRES_DB:-outreach}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-outreach} -d ${POSTGRES_DB:-outreach}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Catches outbound mail when MAIL_DRIVER=smtp. Web UI on :8025.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-outreach}:${POSTGRES_PASSWORD:-outreach}@db:5432/${POSTGRES_DB:-outreach}
+      MAIL_DRIVER: ${MAIL_DRIVER:-console}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      MAIL_FROM: ${MAIL_FROM:-outreach@example.com}
+      DAILY_SEND_CAP: ${DAILY_SEND_CAP:-200}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      SEED_ON_START: ${SEED_ON_START:-true}
+      # Read from .env -- never commit the key into this file.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  worker:
+    build: ./backend
+    command: python -m app.worker.run
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-outreach}:${POSTGRES_PASSWORD:-outreach}@db:5432/${POSTGRES_DB:-outreach}
+      MAIL_DRIVER: ${MAIL_DRIVER:-console}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      MAIL_FROM: ${MAIL_FROM:-outreach@example.com}
+      DAILY_SEND_CAP: ${DAILY_SEND_CAP:-200}
+      WORKER_INTERVAL_SECONDS: ${WORKER_INTERVAL_SECONDS:-15}
+    depends_on:
+      # Waits for the API so migrations have run before the first tick.
+      api:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+    environment:
+      API_URL: http://api:8000
+      NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-8000}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:

@@ -1,0 +1,235 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { bulkDeleteProspectsAction, generateBulkAction } from "@/app/prospect-actions";
+import type { Prospect, Strategy } from "@/lib/prospect-types";
+import { EmptyState, Tag } from "@/components/ui";
+import { ProspectStatusBadge } from "@/components/prospect-ui";
+import { Toast, useToast } from "@/components/toast";
+
+export function ProspectsTable({
+  prospects,
+  strategies,
+}: {
+  prospects: Prospect[];
+  strategies: Strategy[];
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [strategyId, setStrategyId] = useState("");
+  const [pending, startTransition] = useTransition();
+  const { toast, show } = useToast();
+  const router = useRouter();
+
+  const allSelected = prospects.length > 0 && selected.size === prospects.length;
+  const defaultStrategy = strategies.find((s) => s.is_default) ?? strategies[0];
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function generate() {
+    const target = strategyId || defaultStrategy?.id;
+    if (!target) {
+      show({ ok: false, message: "Create a strategy first." });
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await generateBulkAction([...selected], target);
+      show(result);
+      if (result.ok) {
+        setSelected(new Set());
+        router.refresh();
+      }
+    });
+  }
+
+  function remove() {
+    if (
+      !window.confirm(
+        `Delete ${selected.size} prospect(s)? Their drafts and history go too. This can't be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await bulkDeleteProspectsAction([...selected]);
+      show(result);
+      if (result.ok) {
+        setSelected(new Set());
+        router.refresh();
+      }
+    });
+  }
+
+  if (prospects.length === 0) {
+    return (
+      <div className="card">
+        <EmptyState
+          title="No prospects match"
+          description="Clear the filters, or import a CSV to get started."
+        />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {selected.size > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3">
+          <span className="text-sm font-medium text-ink">{selected.size} selected</span>
+
+          <select
+            value={strategyId}
+            onChange={(e) => setStrategyId(e.target.value)}
+            className="input h-9 w-auto min-w-52 py-0"
+            disabled={strategies.length === 0}
+          >
+            {strategies.length === 0 ? (
+              <option value="">No strategies yet</option>
+            ) : (
+              strategies.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.is_default ? " (default)" : ""}
+                </option>
+              ))
+            )}
+          </select>
+
+          <button
+            onClick={generate}
+            disabled={pending || strategies.length === 0 || selected.size > 25}
+            className="btn-primary h-9"
+            title={selected.size > 25 ? "Generate at most 25 at a time" : undefined}
+          >
+            {pending ? "Generating…" : `Generate ${selected.size} email(s)`}
+          </button>
+
+          <button onClick={remove} disabled={pending} className="btn-ghost h-9 text-rose-600">
+            Delete
+          </button>
+          <button onClick={() => setSelected(new Set())} className="btn-ghost h-9">
+            Clear
+          </button>
+
+          {selected.size > 25 && (
+            <span className="text-xs text-rose-600">Max 25 per batch.</span>
+          )}
+        </div>
+      )}
+
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-line bg-surface-2/60">
+              <tr className="text-left text-xs uppercase tracking-wide text-muted">
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={() =>
+                      setSelected(allSelected ? new Set() : new Set(prospects.map((p) => p.id)))
+                    }
+                    aria-label="Select all prospects"
+                    className="h-4 w-4 rounded border-line accent-[rgb(var(--accent))]"
+                  />
+                </th>
+                <th className="px-4 py-3 font-medium">Prospect</th>
+                <th className="px-4 py-3 font-medium">Company</th>
+                <th className="hidden px-4 py-3 font-medium lg:table-cell">Intent</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Drafts</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {prospects.map((prospect) => (
+                <tr
+                  key={prospect.id}
+                  className={`transition-colors hover:bg-surface-2/50 ${
+                    selected.has(prospect.id) ? "bg-accent-soft/40" : ""
+                  }`}
+                >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(prospect.id)}
+                      onChange={() => toggle(prospect.id)}
+                      aria-label={`Select ${prospect.full_name}`}
+                      className="h-4 w-4 rounded border-line accent-[rgb(var(--accent))]"
+                    />
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/prospects/${prospect.id}`}
+                      className="font-medium text-ink hover:text-accent"
+                    >
+                      {prospect.full_name}
+                    </Link>
+                    <p className="text-xs text-muted">{prospect.email}</p>
+                    {prospect.job_title && (
+                      <p className="mt-0.5 text-xs text-muted">{prospect.job_title}</p>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-ink">{prospect.display_company}</span>
+                      {prospect.company_inferred && (
+                        <span
+                          title="Company name derived from the email domain — not verified"
+                          className="text-xs text-amber-600"
+                        >
+                          ~
+                        </span>
+                      )}
+                    </div>
+                    {prospect.industry ? (
+                      <p className="text-xs text-muted">{prospect.industry}</p>
+                    ) : (
+                      <p className="text-xs text-amber-600">Needs company info</p>
+                    )}
+                  </td>
+
+                  <td className="hidden max-w-56 px-4 py-3 lg:table-cell">
+                    {prospect.top_intent ? (
+                      <span className="text-xs text-muted" title={prospect.top_intent}>
+                        {prospect.top_intent.split(":").pop()?.trim()}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted">—</span>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <ProspectStatusBadge status={prospect.status} />
+                  </td>
+
+                  <td className="px-4 py-3">
+                    {prospect.draft_count > 0 ? (
+                      <Tag>
+                        {prospect.draft_count} draft{prospect.draft_count === 1 ? "" : "s"}
+                      </Tag>
+                    ) : (
+                      <span className="text-xs text-muted">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <Toast state={toast} />
+    </>
+  );
+}

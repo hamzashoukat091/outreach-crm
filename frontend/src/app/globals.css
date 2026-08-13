@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Colors are stored as space-separated RGB channels so Tailwind can apply
+   opacity modifiers (e.g. ring-accent/20) via <alpha-value>. */
+:root {
+  --canvas: 247 248 250;
+  --surface: 255 255 255;
+  --surface-2: 242 244 247;
+  --line: 228 231 236;
+  --ink: 22 25 31;
+  --muted: 102 112 133;
+  --accent: 67 56 202;
+  --accent-soft: 238 242 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: 13 15 19;
+    --surface: 22 25 31;
+    --surface-2: 29 33 41;
+    --line: 42 47 58;
+    --ink: 233 235 240;
+    --muted: 152 162 179;
+    --accent: 139 143 245;
+    --accent-soft: 30 31 61;
+  }
+}
+
+body {
+  background: rgb(var(--canvas));
+  color: rgb(var(--ink));
+}
+
+/* Keep long merge-field bodies readable in preview panes. */
+.prose-email {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm
+      font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-white hover:opacity-90;
+  }
+  .btn-secondary {
+    @apply btn border border-line bg-surface text-ink hover:bg-surface-2;
+  }
+  .btn-ghost {
+    @apply btn text-muted hover:bg-surface-2 hover:text-ink;
+  }
+  .card {
+    @apply rounded-xl border border-line bg-surface shadow-card;
+  }
+  .input {
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink
+      outline-none transition placeholder:text-muted focus:border-accent
+      focus:ring-2 focus:ring-accent/20;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink;
+  }
+}
