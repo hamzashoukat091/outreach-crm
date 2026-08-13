@@ -31,7 +31,7 @@ Hard rules, which override any other instruction:
 - Describe only the skills and services given in ABOUT THE SENDER. Never claim
   a credential, a past client, a result, or a technology that is not listed
   there. If you have no proof to cite, make the offer without one.
-- Use ONLY the facts in the prospect context below. Never invent a metric, a
+- Use ONLY the facts in PROSPECT CONTEXT above. Never invent a metric, a
   customer name, a mutual connection, an event, or a detail about their company.
 - If a fact is not given, write around it. Do not guess and do not use a
   placeholder like [Company] or {{company}} -- the message must be ready to send
@@ -76,12 +76,15 @@ def build_context(prospect: Prospect) -> tuple[str, str, dict[str, Any]]:
     add("Location", location, "location")
 
     if prospect.skills:
-        top_skills = [str(s) for s in prospect.skills[:12]]
+        # Fewer, better. A long tail of generic skills ("Project management",
+        # "Agile testing") dilutes the signal without changing the email.
+        top_skills = [str(s) for s in prospect.skills[:8]]
         add("Listed skills", ", ".join(top_skills), "skills")
 
-    if prospect.experience:
-        roles = [str(e) for e in prospect.experience[:6]]
-        add("Career history", "; ".join(roles), "experience")
+    # `experience` is deliberately NOT sent. The vendor supplies it as unordered
+    # title fragments with no company or dates -- "Director; application
+    # development; Owner" is one split job title, and the model can read a stale
+    # "Owner" as a current role.
 
     if prospect.interests:
         add("Interests", ", ".join(str(i) for i in prospect.interests[:8]), "interests")
@@ -207,8 +210,14 @@ def build_prompt(
 
     if strategy.tone:
         parts.append(f"\nTone: {strategy.tone}")
-    if strategy.subject_hint:
+
+    # Skip the hint when the strategy's own instructions already dictate the
+    # subject line -- repeating it twice invites the model to average two
+    # near-identical rules rather than follow the more detailed one.
+    instructions_cover_subject = "SUBJECT LINE" in strategy.instructions.upper()
+    if strategy.subject_hint and not instructions_cover_subject:
         parts.append(f"Subject line guidance: {strategy.subject_hint}")
+
     parts.append(f"Hard length limit: {strategy.max_words} words for the body.")
 
     sign_off = (sender.signature if sender and sender.signature else None)
@@ -262,7 +271,10 @@ def generate_email(
     try:
         response = client.messages.create(
             model=settings.anthropic_model,
-            max_tokens=1200,
+            # Derived from the strategy's own limit rather than fixed: a 220-word
+            # strategy overran a flat 1200 and got cut off mid-sentence. ~2 tokens
+            # per word, doubled for the model's preamble and reasoning slack.
+            max_tokens=max(1200, strategy.max_words * 8),
             system=system,
             messages=[{"role": "user", "content": user_message}],
         )
@@ -280,6 +292,14 @@ def generate_email(
     text = "".join(block.text for block in response.content if block.type == "text")
     if not text.strip():
         raise GenerationError("The model returned an empty response.")
+
+    # Hitting the token ceiling yields an email cut off mid-sentence. Fail loudly
+    # rather than storing half a draft that looks complete in the UI.
+    if response.stop_reason == "max_tokens":
+        raise GenerationError(
+            "The model ran out of room before finishing. Lower the strategy's "
+            "word limit and try again."
+        )
 
     subject, body = _parse_response(text)
 

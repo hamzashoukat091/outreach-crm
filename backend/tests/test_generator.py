@@ -170,6 +170,50 @@ def test_only_one_seeded_strategy_is_default():
     assert sum(1 for s in STRATEGIES if s["is_default"]) == 1
 
 
+def test_career_history_is_not_sent_to_the_model():
+    """The vendor supplies experience as unordered title fragments with no
+    company or dates, so a stale 'Owner' can read as a current role."""
+    prospect = make_prospect(
+        experience=["Director software development", "Director", "Owner"]
+    )
+    text, _quality, used = build_context(prospect)
+
+    assert "Career history" not in text
+    assert "experience" not in used
+
+
+def test_skills_are_capped_to_keep_signal_dense():
+    prospect = make_prospect(skills=[f"Skill{i}" for i in range(20)])
+    text, _quality, _used = build_context(prospect)
+
+    assert "Skill7" in text
+    assert "Skill8" not in text
+
+
+def test_subject_hint_is_dropped_when_instructions_already_cover_it():
+    """Two near-identical subject rules invite the model to average them."""
+    strategy = SimpleNamespace(
+        system_prompt="You are a writer.",
+        instructions="1. SUBJECT LINE - keep it oblique.\n2. Body.",
+        tone=None,
+        max_words=200,
+        subject_hint="Under 8 words",
+        name="Five part",
+    )
+    _system, message = build_prompt(make_prospect(), strategy, None)
+
+    assert "Subject line guidance:" not in message
+    # The strategy's own, more detailed rule survives.
+    assert "SUBJECT LINE - keep it oblique" in message
+
+
+def test_guardrail_points_at_the_context_it_means():
+    _system, message = build_prompt(make_prospect(), STRATEGY, None)
+
+    # The context sits above the guardrails, so "below" was simply wrong.
+    assert "PROSPECT CONTEXT above" in message
+
+
 def test_guardrails_are_always_appended():
     _system, message = build_prompt(make_prospect(), STRATEGY)
 
