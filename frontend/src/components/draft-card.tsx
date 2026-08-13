@@ -169,9 +169,12 @@ export function DraftCard({
             <p className="text-xs text-emerald-700 dark:text-emerald-400">
               Sent {draft.approved_at ? formatDate(draft.approved_at) : ""}
             </p>
-            <button onClick={copyOnly} disabled={pending} className="btn-ghost h-8 text-xs">
-              Copy again
-            </button>
+            <div className="flex items-center gap-1">
+              <PromptInspector draftId={draft.id} />
+              <button onClick={copyOnly} disabled={pending} className="btn-ghost h-8 text-xs">
+                Copy again
+              </button>
+            </div>
           </div>
         ) : (
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -208,6 +211,7 @@ export function DraftCard({
             <button onClick={copyOnly} disabled={pending} className="btn-ghost h-9">
               Copy only
             </button>
+            <PromptInspector draftId={draft.id} />
             <button
               onClick={discard}
               disabled={pending}
@@ -223,11 +227,6 @@ export function DraftCard({
             Written without company data — check it reads true before sending.
           </p>
         )}
-
-        {/* Full transparency into the API call that produced this draft. */}
-        <div className="mt-2 border-t border-line pt-2">
-          <PromptInspector draftId={draft.id} />
-        </div>
       </div>
 
       <Toast state={toast} />
