@@ -241,6 +241,11 @@ def generate_email(prospect: Prospect, strategy: Strategy) -> dict[str, Any]:
         "model": settings.anthropic_model,
         "context_quality": quality,
         "context_used": used,
+        # Persisted so the draft can show exactly what was sent and returned,
+        # even after the strategy behind it is edited.
+        "system_prompt": system,
+        "user_prompt": user_message,
+        "raw_response": text,
         "input_tokens": response.usage.input_tokens,
         "output_tokens": response.usage.output_tokens,
     }

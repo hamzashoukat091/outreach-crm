@@ -79,6 +79,31 @@ def update_draft(draft_id: uuid.UUID, payload: DraftUpdate, db: Session = Depend
     return _out(draft)
 
 
+@router.get("/{draft_id}/prompt")
+def get_draft_prompt(draft_id: uuid.UUID, db: Session = Depends(get_db)):
+    """The exact API call behind this draft.
+
+    Served separately from the draft itself so list endpoints don't carry
+    several KB of prompt text per row.
+    """
+    draft = _get(db, draft_id)
+
+    return {
+        "draft_id": str(draft.id),
+        "available": bool(draft.user_prompt),
+        "model": draft.model,
+        "strategy_name": draft.strategy_name,
+        "context_quality": draft.context_quality,
+        "system_prompt": draft.system_prompt,
+        "user_prompt": draft.user_prompt,
+        "raw_response": draft.raw_response,
+        "input_tokens": draft.input_tokens,
+        "output_tokens": draft.output_tokens,
+        "created_at": draft.created_at.isoformat() if draft.created_at else None,
+        "prospect_email": draft.prospect.email if draft.prospect else None,
+    }
+
+
 @router.post("/{draft_id}/approve", response_model=DraftOut)
 def approve_draft(draft_id: uuid.UUID, db: Session = Depends(get_db)):
     """Approve = 'I copied this and sent it by hand'.

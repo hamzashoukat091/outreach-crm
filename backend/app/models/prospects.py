@@ -214,6 +214,13 @@ class EmailDraft(Base):
     strategy_name: Mapped[str | None] = mapped_column(String(200))
     context_quality: Mapped[str | None] = mapped_column(String(40))  # rich | thin
     context_used: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
+    # The exact strings sent to the API for THIS draft, stored verbatim.
+    # A strategy can be edited later, so re-deriving the prompt from it would
+    # show what the prompt is now, not what produced this email.
+    system_prompt: Mapped[str | None] = mapped_column(Text)
+    user_prompt: Mapped[str | None] = mapped_column(Text)
+    raw_response: Mapped[str | None] = mapped_column(Text)
     input_tokens: Mapped[int | None] = mapped_column(Integer)
     output_tokens: Mapped[int | None] = mapped_column(Integer)
     error: Mapped[str | None] = mapped_column(Text)

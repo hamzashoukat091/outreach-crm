@@ -125,6 +125,20 @@ def test_long_company_description_is_truncated():
     assert len(text) < 4000
 
 
+def test_prompt_is_reproducible_from_its_parts():
+    """The stored prompt must equal what build_prompt produced, so the
+    inspector shows the real call rather than a re-derived approximation."""
+    prospect = make_prospect()
+    system, message = build_prompt(prospect, STRATEGY)
+
+    # Every ingested field the context claims to use appears in the message.
+    _text, _quality, used = build_context(prospect)
+    for value in used.values():
+        assert str(value)[:40] in message
+
+    assert system == STRATEGY.system_prompt.strip()
+
+
 def test_response_parsing_splits_subject_and_body():
     subject, body = _parse_response("SUBJECT: quick question\nBODY:\nHi there,\n\nThanks.")
 

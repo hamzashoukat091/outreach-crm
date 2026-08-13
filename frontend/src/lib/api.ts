@@ -10,6 +10,7 @@ import type {
 } from "./types";
 import type {
   Analytics,
+  DraftPrompt,
   DraftStatus,
   EmailDraft,
   Prospect,
@@ -235,6 +236,8 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(payload),
     }),
+
+  draftPrompt: (id: string) => request<DraftPrompt>(`/api/drafts/${id}/prompt`),
 
   approveDraft: (id: string) =>
     request<EmailDraft>(`/api/drafts/${id}/approve`, { method: "POST" }),

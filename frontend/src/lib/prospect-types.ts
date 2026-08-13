@@ -112,6 +112,22 @@ export interface EmailDraft {
   prospect_name: string | null;
 }
 
+/** The exact API call behind one draft, fetched on demand. */
+export interface DraftPrompt {
+  draft_id: string;
+  available: boolean;
+  model: string | null;
+  strategy_name: string | null;
+  context_quality: "rich" | "thin" | null;
+  system_prompt: string | null;
+  user_prompt: string | null;
+  raw_response: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  created_at: string | null;
+  prospect_email: string | null;
+}
+
 export interface ProspectEvent {
   id: string;
   prospect_id: string;

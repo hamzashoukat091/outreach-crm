@@ -10,6 +10,7 @@ import {
 } from "@/app/prospect-actions";
 import type { EmailDraft } from "@/lib/prospect-types";
 import { ContextBadge, DraftStatusBadge } from "@/components/prospect-ui";
+import { PromptInspector } from "@/components/prompt-inspector";
 import { Toast, useToast } from "@/components/toast";
 import { formatDate } from "@/components/ui";
 
@@ -222,6 +223,11 @@ export function DraftCard({
             Written without company data — check it reads true before sending.
           </p>
         )}
+
+        {/* Full transparency into the API call that produced this draft. */}
+        <div className="mt-2 border-t border-line pt-2">
+          <PromptInspector draftId={draft.id} />
+        </div>
       </div>
 
       <Toast state={toast} />
