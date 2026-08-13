@@ -160,24 +160,6 @@ export default async function ProspectDetailPage({
               </div>
             )}
 
-            {prospect.experience.length > 0 && (
-              <div className="mt-4 border-t border-line pt-4">
-                <dt className="mb-2 text-xs text-muted">
-                  Career history — past and present roles
-                </dt>
-                <ul className="space-y-1">
-                  {prospect.experience.map((role, i) => (
-                    <li
-                      key={`${String(role)}-${i}`}
-                      className="text-sm capitalize text-ink"
-                    >
-                      {String(role)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
             {prospect.skills.length > 0 && (
               <div className="mt-4 border-t border-line pt-4">
                 <dt className="mb-2 text-xs text-muted">Skills</dt>
