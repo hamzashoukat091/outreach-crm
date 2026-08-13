@@ -27,7 +27,22 @@ BASE_SYSTEM = (
     "who understands the recipient's problem, not like a campaign."
 )
 
+# Structure from a cold-email specialist: the first email exists only to be
+# opened and replied to. Pattern-interrupt subject, real introduction, grounded
+# value prop, the objection answered before it is raised, then a named process.
+FIVE_PART_SYSTEM = "You write cold outreach on behalf of one independent specialist who sells their own skills and services directly to businesses of any kind - a dental practice, a pharmacy, a logistics firm, a software company. You are not an agency and never speak as a company: always 'I', never 'we'. The only job of the email is to get opened and get a reply. You write plainly, like a competent person who has done the homework, never like a campaign. You never claim experience, clients, or results you were not given."
+
 STRATEGIES = [
+    {
+        "name": "5-part cold email (open + reply)",
+        "description": "Pattern-interrupt subject, proper intro, value prop, objection handled up front, then a named 3-step process. Longer by design.",
+        "system_prompt": FIVE_PART_SYSTEM,
+        "instructions": "Write a first-touch cold email in five parts. Follow the order exactly.\n\n1. SUBJECT LINE - the email is worthless if it is not opened. Generic subject lines get deleted, so signal that you already know who they are. Use one concrete detail from the context: their city, their company name, or a distinctive phrase from their role or skills. Keep it short (3-7 words), lowercase, and slightly oblique - a little curiosity is the point, and it should not read like marketing. Never use a question mark, an exclamation mark, an emoji, or a word like 'quick', 'opportunity', 'growth', or 'partnership'.\n\n2. INTRODUCE YOURSELF - do not open with a pitch and do not be strange about it. You are a stranger, so say who you are in one short sentence before anything else. Model: 'Hi <first name>, we haven't been introduced - I'm <sender name>, <what they are>.'\n\n3. VALUE PROPOSITION - immediately after the introduction, name the specific problem you will solve for THEM. Ground it in something real from the context: what their company actually does, their industry, or their role. Say what the outcome is in plain terms - hours back, fewer manual steps, faster response to customers. Be concrete about the work, not about adjectives.\n\n4. HANDLE THE OBJECTION - this is the part most emails skip and it is what earns the reply. Work out what THIS person's first objection would be, based on their role and the kind of business they run, and answer it before they raise it. A technical leader will think 'my own team could build this'. An owner of a small or non-technical business - a clinic, a pharmacy, a shop, an agency - will think 'this sounds complicated and not for a business like mine' or 'this is not worth the money at my size'. Name the objection in their own terms, then answer it in one or two sentences without being defensive.\n\n5. EXTEND, THEN ASK - go past the pitch. Give a named three-step process for how the work would actually go, written as a single short line, for example 'Audit -> prototype -> ship'. Keep the steps concrete and specific to what you do. Then close with one low-friction ask. One ask only.\n\nRules: never invent a client, a number, a result, or a technology that is not in ABOUT THE SENDER. Never claim to have worked with 'hundreds' of anyone. If you have no proof to cite, make the offer without one. Keep sentences short and do not pad - the email should be longer than a two-line pitch because it does real work, not because it is wordy.",
+        "tone": "Plain, direct, a person not a campaign. No hype words, no flattery, no exclamation marks.",
+        "max_words": 220,
+        "subject_hint": "3-7 words, lowercase, uses their city, company, or a distinctive detail. Slightly oblique - curiosity, not marketing. No question marks or emoji.",
+        "is_default": True,
+    },
     {
         "name": "Problem-first",
         "description": "Leads with a problem their role owns, then offers your help. Good all-rounder.",
@@ -50,7 +65,7 @@ STRATEGIES = [
         "tone": "Direct, peer-to-peer, no hype",
         "max_words": 130,
         "subject_hint": "Under 8 words, lowercase, specific, no clickbait and no emoji",
-        "is_default": True,
+        "is_default": False,
     },
     {
         "name": "Intent-signal led",

@@ -138,6 +138,38 @@ def test_missing_sender_profile_says_so_rather_than_inventing():
     assert "rather than inventing services" in message
 
 
+def test_five_part_strategy_carries_its_full_structure():
+    """The seeded default encodes a specific cold-email structure; if any part
+    is dropped the emails silently regress to a generic pitch."""
+    from app.seed_strategies import STRATEGIES
+
+    five_part = next(s for s in STRATEGIES if s["is_default"])
+    instructions = five_part["instructions"]
+
+    for section in (
+        "SUBJECT LINE",
+        "INTRODUCE YOURSELF",
+        "VALUE PROPOSITION",
+        "HANDLE THE OBJECTION",
+        "EXTEND, THEN ASK",
+    ):
+        assert section in instructions
+
+    # The objection must be derived per prospect -- the list spans technical
+    # leaders and non-technical owners, so a hardcoded one would misfire.
+    assert "my own team could build this" in instructions
+    assert "not for a business like mine" in instructions
+
+    # Length has to allow the structure; the shorter strategies cannot fit it.
+    assert five_part["max_words"] >= 200
+
+
+def test_only_one_seeded_strategy_is_default():
+    from app.seed_strategies import STRATEGIES
+
+    assert sum(1 for s in STRATEGIES if s["is_default"]) == 1
+
+
 def test_guardrails_are_always_appended():
     _system, message = build_prompt(make_prospect(), STRATEGY)
 
