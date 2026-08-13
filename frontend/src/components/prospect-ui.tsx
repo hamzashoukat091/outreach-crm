@@ -71,6 +71,45 @@ export function ContextBadge({ quality }: { quality: "rich" | "thin" | null }) {
   );
 }
 
+/**
+ * Deliverability of the work address.
+ *
+ * `catch_all` matters: the domain accepts mail to any address, so the
+ * verifier could not confirm this mailbox actually exists. Worth knowing
+ * before you spend a send on it.
+ */
+export function EmailStatusBadge({ status }: { status: string | null }) {
+  if (!status) return null;
+
+  if (status === "catch_all") {
+    return (
+      <span
+        title="This domain accepts mail to any address, so the mailbox couldn't be verified. Delivery isn't guaranteed."
+        className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+      >
+        catch-all
+      </span>
+    );
+  }
+
+  if (status === "valid") {
+    return (
+      <span
+        title="The mailbox was verified as deliverable."
+        className="ml-2 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+      >
+        valid
+      </span>
+    );
+  }
+
+  return (
+    <span className="ml-2 inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted">
+      {status.replace("_", " ")}
+    </span>
+  );
+}
+
 /** Warns on the prospect record itself when company data is missing. */
 export function IncompleteWarning({
   missing,

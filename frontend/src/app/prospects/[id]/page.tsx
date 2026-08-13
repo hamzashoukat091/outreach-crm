@@ -3,7 +3,11 @@ import { notFound } from "next/navigation";
 import { api } from "@/lib/api";
 import { DraftCard } from "@/components/draft-card";
 import { ProspectPanel } from "@/components/prospect-panel";
-import { IncompleteWarning, ProspectStatusBadge } from "@/components/prospect-ui";
+import {
+  EmailStatusBadge,
+  IncompleteWarning,
+  ProspectStatusBadge,
+} from "@/components/prospect-ui";
 import { EmptyState, Tag, formatDate } from "@/components/ui";
 import type { ProspectEventType } from "@/lib/prospect-types";
 
@@ -45,16 +49,24 @@ export default async function ProspectDetailPage({
   }
 
   const liveDrafts = drafts.filter((d) => d.status !== "discarded");
+
+  const personLocation =
+    [prospect.prospect_city, prospect.prospect_region].filter(Boolean).join(", ") || null;
+  const companyLocation =
+    [prospect.company_city, prospect.company_region].filter(Boolean).join(", ") || null;
+
   const details: [string, string | null][] = [
     ["Email", prospect.email],
     ["Job title", prospect.job_title],
     ["Department", prospect.job_department],
     ["Seniority", prospect.seniority?.toUpperCase() ?? null],
-    ["Location", [prospect.prospect_city, prospect.prospect_region].filter(Boolean).join(", ") || null],
+    ["Location", personLocation],
     ["Company", prospect.company_name],
     ["Industry", prospect.industry],
     ["Employees", prospect.employee_range],
     ["Revenue", prospect.revenue_range],
+    // Only worth its own row when it differs from where the person sits.
+    ["Company HQ", companyLocation === personLocation ? null : companyLocation],
     ["Website", prospect.company_website ?? prospect.company_domain],
   ];
 
@@ -103,7 +115,18 @@ export default async function ProspectDetailPage({
                 .map(([label, value]) => (
                   <div key={label}>
                     <dt className="text-xs text-muted">{label}</dt>
-                    <dd className="mt-0.5 break-words text-sm text-ink">{value}</dd>
+                    <dd className="mt-0.5 break-words text-sm text-ink">
+                      {value}
+                      {/* Deliverability sits next to the address it describes. */}
+                      {label === "Email" && (
+                        <EmailStatusBadge status={prospect.email_status} />
+                      )}
+                    </dd>
+                    {label === "Email" && prospect.other_emails.length > 0 && (
+                      <p className="mt-1 text-xs text-muted">
+                        Also: {prospect.other_emails.join(", ")}
+                      </p>
+                    )}
                   </div>
                 ))}
             </dl>
@@ -137,6 +160,24 @@ export default async function ProspectDetailPage({
               </div>
             )}
 
+            {prospect.experience.length > 0 && (
+              <div className="mt-4 border-t border-line pt-4">
+                <dt className="mb-2 text-xs text-muted">
+                  Career history — past and present roles
+                </dt>
+                <ul className="space-y-1">
+                  {prospect.experience.map((role, i) => (
+                    <li
+                      key={`${String(role)}-${i}`}
+                      className="text-sm capitalize text-ink"
+                    >
+                      {String(role)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {prospect.skills.length > 0 && (
               <div className="mt-4 border-t border-line pt-4">
                 <dt className="mb-2 text-xs text-muted">Skills</dt>
@@ -145,6 +186,30 @@ export default async function ProspectDetailPage({
                     <Tag key={String(skill)}>{String(skill)}</Tag>
                   ))}
                 </div>
+                {/* Say so rather than silently hiding the rest. */}
+                {prospect.skills.length > 14 && (
+                  <p className="mt-2 text-xs text-muted">
+                    +{prospect.skills.length - 14} more
+                  </p>
+                )}
+              </div>
+            )}
+
+            {prospect.interests.length > 0 && (
+              <div className="mt-4 border-t border-line pt-4">
+                <dt className="mb-2 text-xs text-muted">Interests</dt>
+                <div className="flex flex-wrap gap-1.5">
+                  {prospect.interests.map((interest) => (
+                    <Tag key={String(interest)}>{String(interest)}</Tag>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {prospect.notes && (
+              <div className="mt-4 border-t border-line pt-4">
+                <dt className="text-xs text-muted">Notes</dt>
+                <dd className="prose-email mt-1 text-sm text-ink">{prospect.notes}</dd>
               </div>
             )}
           </section>
