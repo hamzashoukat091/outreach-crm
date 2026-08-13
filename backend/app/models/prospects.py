@@ -159,6 +159,40 @@ class Prospect(Base):
         return best.get("topic")
 
 
+class SenderProfile(Base):
+    """Who is sending, and what they offer.
+
+    Single row. Without this the prompt describes the prospect but never the
+    sender, so the model invents a vague "we help teams" pitch. Naming the
+    actual offer is what lets it write a specific one.
+    """
+
+    __tablename__ = "sender_profile"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    name: Mapped[str | None] = mapped_column(String(200))
+    headline: Mapped[str | None] = mapped_column(String(300))
+    # The core of it: skills, services, and the problems they solve.
+    offer: Mapped[str | None] = mapped_column(Text)
+    # Concrete proof -- past work, results, stack. Never invented by the model.
+    proof: Mapped[str | None] = mapped_column(Text)
+    # What a reply should lead to (call, reply, portfolio link).
+    call_to_action: Mapped[str | None] = mapped_column(String(400))
+    signature: Mapped[str | None] = mapped_column(String(200))
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    @property
+    def is_configured(self) -> bool:
+        return bool((self.offer or "").strip())
+
+
 class Strategy(Base):
     """A saved, editable generation prompt."""
 

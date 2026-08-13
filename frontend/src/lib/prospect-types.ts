@@ -112,6 +112,18 @@ export interface EmailDraft {
   prospect_name: string | null;
 }
 
+/** Who is sending, and what they offer. Injected into every prompt. */
+export interface SenderProfile {
+  id: string;
+  name: string | null;
+  headline: string | null;
+  offer: string | null;
+  proof: string | null;
+  call_to_action: string | null;
+  signature: string | null;
+  is_configured: boolean;
+}
+
 /** The exact API call behind one draft, fetched on demand. */
 export interface DraftPrompt {
   draft_id: string;

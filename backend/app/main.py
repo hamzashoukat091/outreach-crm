@@ -10,6 +10,7 @@ from app.api import (
     enrollments,
     leads,
     prospects,
+    sender,
     sequences,
     strategies,
 )
@@ -40,6 +41,7 @@ app.include_router(dashboard.router)
 
 # Prospect / AI-generation side of the app.
 app.include_router(prospects.router)
+app.include_router(sender.router)
 app.include_router(strategies.router)
 app.include_router(drafts.router)
 app.include_router(analytics.router)

@@ -102,6 +102,42 @@ def test_intent_topics_are_ranked_and_qualified():
     assert "do NOT claim to know" in text
 
 
+SENDER = SimpleNamespace(
+    name="Hamza",
+    headline="Python AI Engineer",
+    offer="I build AI agents and RAG systems in Python.",
+    proof="4+ years; FastAPI, LangChain, AWS.",
+    call_to_action="A short call",
+    signature="Hamza",
+    is_configured=True,
+)
+
+
+def test_sender_offer_reaches_the_prompt():
+    """Without this the model knows the prospect but not what is being sold."""
+    _system, message = build_prompt(make_prospect(), STRATEGY, SENDER)
+
+    assert "ABOUT THE SENDER" in message
+    assert "I build AI agents and RAG systems" in message
+    assert "Sign off as: Hamza" in message
+
+
+def test_guardrails_forbid_agency_voice_and_invented_credentials():
+    _system, message = build_prompt(make_prospect(), STRATEGY, SENDER)
+
+    assert 'never "we"' in message
+    assert "ONE INDEPENDENT PERSON" in message
+    # The rule wraps across lines in the source, so match a single-line fragment.
+    assert "Describe only the skills and services given in ABOUT THE SENDER" in message
+
+
+def test_missing_sender_profile_says_so_rather_than_inventing():
+    _system, message = build_prompt(make_prospect(), STRATEGY, None)
+
+    assert "No sender profile has been filled in" in message
+    assert "rather than inventing services" in message
+
+
 def test_guardrails_are_always_appended():
     _system, message = build_prompt(make_prospect(), STRATEGY)
 

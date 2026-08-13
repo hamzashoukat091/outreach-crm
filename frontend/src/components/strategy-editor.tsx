@@ -14,9 +14,10 @@ const BLANK = {
   name: "",
   description: "",
   system_prompt:
-    "You are an experienced B2B cold-outreach writer. You write short, specific, " +
-    "plain-spoken emails. You never use marketing filler and you never claim " +
-    "knowledge you were not given.",
+    "You write cold outreach on behalf of one independent specialist who sells " +
+    "their own skills and services directly. Always 'I', never 'we'. You write " +
+    "short, specific, plain-spoken emails. You never use marketing filler and " +
+    "you never claim experience you were not given.",
   instructions: "",
   tone: "",
   max_words: 150,

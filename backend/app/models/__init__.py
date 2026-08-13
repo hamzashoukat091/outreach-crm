@@ -17,5 +17,6 @@ from app.models.prospects import (  # noqa: F401
     ProspectEvent,
     ProspectEventType,
     ProspectStatus,
+    SenderProfile,
     Strategy,
 )

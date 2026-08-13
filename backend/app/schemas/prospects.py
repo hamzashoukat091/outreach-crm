@@ -145,6 +145,29 @@ class StrategyOut(ORMModel, StrategyBase):
     usage_count: int = 0
 
 
+# ---------- Sender profile ----------
+
+
+class SenderProfileUpdate(BaseModel):
+    name: str | None = None
+    headline: str | None = None
+    offer: str | None = None
+    proof: str | None = None
+    call_to_action: str | None = None
+    signature: str | None = None
+
+
+class SenderProfileOut(ORMModel):
+    id: uuid.UUID
+    name: str | None = None
+    headline: str | None = None
+    offer: str | None = None
+    proof: str | None = None
+    call_to_action: str | None = None
+    signature: str | None = None
+    is_configured: bool = False
+
+
 # ---------- Drafts ----------
 
 

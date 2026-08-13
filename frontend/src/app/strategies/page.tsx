@@ -1,5 +1,6 @@
 import { api } from "@/lib/api";
 import { NewStrategyButton, StrategyCard } from "@/components/strategy-editor";
+import { SenderProfileEditor } from "@/components/sender-profile-editor";
 import { EmptyState, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -7,10 +8,12 @@ export const dynamic = "force-dynamic";
 export default async function StrategiesPage() {
   let strategies;
   let health;
+  let sender;
   try {
-    [strategies, health] = await Promise.all([
+    [strategies, health, sender] = await Promise.all([
       api.listStrategies(),
       api.health().catch(() => ({ ai_configured: false, status: "", model: "" })),
+      api.getSender(),
     ]);
   } catch {
     return (
@@ -48,6 +51,10 @@ export default async function StrategiesPage() {
           Generating with <code className="rounded bg-surface-2 px-1.5 py-0.5">{health.model}</code>
         </p>
       )}
+
+      <div className="mb-6">
+        <SenderProfileEditor profile={sender} />
+      </div>
 
       {strategies.length === 0 ? (
         <div className="card">

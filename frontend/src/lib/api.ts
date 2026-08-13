@@ -16,6 +16,7 @@ import type {
   Prospect,
   ProspectEvent,
   ProspectList,
+  SenderProfile,
   Strategy,
 } from "./prospect-types";
 
@@ -244,6 +245,16 @@ export const api = {
 
   discardDraft: (id: string) =>
     request<EmailDraft>(`/api/drafts/${id}/discard`, { method: "POST" }),
+
+  // ---------- Sender profile ----------
+
+  getSender: () => request<SenderProfile>("/api/sender"),
+
+  updateSender: (payload: Partial<SenderProfile>) =>
+    request<SenderProfile>("/api/sender", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
 
   // ---------- Strategies ----------
 

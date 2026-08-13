@@ -13,7 +13,7 @@ from typing import Any
 import anthropic
 
 from app.core.config import settings
-from app.models import Prospect, Strategy
+from app.models import Prospect, SenderProfile, Strategy
 
 logger = logging.getLogger("outreach.generator")
 
@@ -26,6 +26,11 @@ class GenerationError(Exception):
 # cannot instruct the model to fabricate.
 GUARDRAILS = """
 Hard rules, which override any other instruction:
+- You are writing as ONE INDEPENDENT PERSON, not a company or an agency. Use
+  "I", never "we", never "our team", never "us".
+- Describe only the skills and services given in ABOUT THE SENDER. Never claim
+  a credential, a past client, a result, or a technology that is not listed
+  there. If you have no proof to cite, make the offer without one.
 - Use ONLY the facts in the prospect context below. Never invent a metric, a
   customer name, a mutual connection, an event, or a detail about their company.
 - If a fact is not given, write around it. Do not guess and do not use a
@@ -150,7 +155,42 @@ def build_context(prospect: Prospect) -> tuple[str, str, dict[str, Any]]:
     return "\n".join(lines), quality, used
 
 
-def build_prompt(prospect: Prospect, strategy: Strategy) -> tuple[str, str]:
+def build_sender_block(sender: "SenderProfile | None") -> str:
+    """Describe who is writing and what they sell.
+
+    Without this the model knows the prospect but not the offer, and fills the
+    gap with generic "we help teams" filler.
+    """
+    if not sender or not sender.is_configured:
+        return (
+            "ABOUT THE SENDER\n"
+            "- No sender profile has been filled in yet. Write the email around "
+            "the prospect's situation and keep any mention of what you do vague "
+            "rather than inventing services, tools, or results."
+        )
+
+    lines = ["ABOUT THE SENDER", "You are writing as this person, in the first person singular."]
+
+    if sender.name:
+        lines.append(f"- Name: {sender.name}")
+    if sender.headline:
+        lines.append(f"- Role: {sender.headline}")
+    if sender.offer:
+        lines.append(f"- What they offer: {sender.offer.strip()}")
+    if sender.proof:
+        lines.append(
+            f"- Relevant experience you MAY reference (nothing beyond this): "
+            f"{sender.proof.strip()}"
+        )
+    if sender.call_to_action:
+        lines.append(f"- Preferred ask: {sender.call_to_action}")
+
+    return "\n".join(lines)
+
+
+def build_prompt(
+    prospect: Prospect, strategy: Strategy, sender: "SenderProfile | None" = None
+) -> tuple[str, str]:
     """Returns (system_prompt, user_message)."""
     context, quality, _used = build_context(prospect)
 
@@ -158,6 +198,8 @@ def build_prompt(prospect: Prospect, strategy: Strategy) -> tuple[str, str]:
 
     parts = [
         "Write one cold outreach email to the prospect described below.",
+        "",
+        build_sender_block(sender),
         "",
         "YOUR STRATEGY AND INSTRUCTIONS:",
         strategy.instructions.strip(),
@@ -168,6 +210,10 @@ def build_prompt(prospect: Prospect, strategy: Strategy) -> tuple[str, str]:
     if strategy.subject_hint:
         parts.append(f"Subject line guidance: {strategy.subject_hint}")
     parts.append(f"Hard length limit: {strategy.max_words} words for the body.")
+
+    sign_off = (sender.signature if sender and sender.signature else None)
+    if sign_off:
+        parts.append(f"Sign off as: {sign_off}")
 
     parts += ["", "PROSPECT CONTEXT", context, "", GUARDRAILS]
 
@@ -199,14 +245,16 @@ def _parse_response(text: str) -> tuple[str, str]:
     return subject[:500], body
 
 
-def generate_email(prospect: Prospect, strategy: Strategy) -> dict[str, Any]:
+def generate_email(
+    prospect: Prospect, strategy: Strategy, sender: "SenderProfile | None" = None
+) -> dict[str, Any]:
     """Call Claude and return the draft fields. Raises GenerationError."""
     if not settings.anthropic_api_key:
         raise GenerationError(
             "No ANTHROPIC_API_KEY configured. Add it to .env and restart the api service."
         )
 
-    system, user_message = build_prompt(prospect, strategy)
+    system, user_message = build_prompt(prospect, strategy, sender)
     _context, quality, used = build_context(prospect)
 
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=90.0)

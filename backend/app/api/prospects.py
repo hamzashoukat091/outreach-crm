@@ -29,6 +29,7 @@ from app.schemas.prospects import (
     ProspectOut,
     ProspectUpdate,
 )
+from app.api.sender import get_or_create_profile
 from app.services.generator import GenerationError, generate_email
 from app.services.prospect_import import COMPANY_SIGNALS, import_prospects_csv
 
@@ -332,8 +333,10 @@ def generate(
     prospect = _get(db, prospect_id)
     strategy = _resolve_strategy(db, payload.strategy_id)
 
+    sender = get_or_create_profile(db)
+
     try:
-        result = generate_email(prospect, strategy)
+        result = generate_email(prospect, strategy, sender)
     except GenerationError as exc:
         # Record the failure so the timeline explains why nothing appeared.
         _log(
@@ -383,11 +386,12 @@ def generate_bulk(payload: BulkGenerateRequest, db: Session = Depends(get_db)):
         select(Prospect).where(Prospect.id.in_(payload.prospect_ids))
     ).all()
 
+    sender = get_or_create_profile(db)
     result = BulkGenerateResult(generated=0, failed=0)
 
     for prospect in prospects:
         try:
-            generated = generate_email(prospect, strategy)
+            generated = generate_email(prospect, strategy, sender)
         except GenerationError as exc:
             result.failed += 1
             result.errors[prospect.email] = str(exc)

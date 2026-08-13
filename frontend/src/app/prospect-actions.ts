@@ -274,6 +274,31 @@ export async function discardDraftAction(draftId: string): Promise<ActionState> 
   }
 }
 
+// ---------- Sender profile ----------
+
+export async function saveSenderAction(payload: {
+  name: string;
+  headline: string;
+  offer: string;
+  proof: string;
+  call_to_action: string;
+  signature: string;
+}): Promise<ActionState> {
+  if (!payload.offer.trim()) {
+    return { ok: false, message: "Describe what you offer — that's the part emails are built on." };
+  }
+
+  try {
+    await api.updateSender(payload);
+  } catch (error) {
+    return fail(error);
+  }
+
+  revalidatePath("/strategies");
+  revalidatePath("/prospects");
+  return { ok: true, message: "Profile saved. New emails will use it." };
+}
+
 // ---------- Strategies ----------
 
 export async function saveStrategyAction(
