@@ -164,6 +164,33 @@ def test_five_part_strategy_carries_its_full_structure():
     assert five_part["max_words"] >= 200
 
 
+def test_three_sentence_strategy_enforces_its_shape():
+    """Brevity is the whole strategy here -- if the sentence count or the
+    reply-not-a-meeting rule is lost, it becomes just another short pitch."""
+    from app.seed_strategies import STRATEGIES
+
+    short = next(s for s in STRATEGIES if s["name"].startswith("3-sentence"))
+
+    assert "EXACTLY THREE SENTENCES" in short["instructions"]
+    assert "Not four. Not two." in short["instructions"]
+    # The ask must be answerable, not a booking request.
+    assert "Never ask for a meeting" in short["instructions"]
+    assert "REPLY, not a booking" in short["instructions"]
+    # Filler subject lines read as a mass send.
+    assert "never a filler word" in short["subject_hint"].lower()
+    # Three sentences cannot fit the long structures.
+    assert short["max_words"] <= 80
+
+
+def test_strategies_span_short_and_long_openers():
+    """The set should offer both a conversation opener and a full pitch."""
+    from app.seed_strategies import STRATEGIES
+
+    lengths = [s["max_words"] for s in STRATEGIES]
+    assert min(lengths) <= 80
+    assert max(lengths) >= 200
+
+
 def test_only_one_seeded_strategy_is_default():
     from app.seed_strategies import STRATEGIES
 

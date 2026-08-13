@@ -32,7 +32,11 @@ BASE_SYSTEM = (
 # value prop, the objection answered before it is raised, then a named process.
 FIVE_PART_SYSTEM = "You write cold outreach on behalf of one independent specialist who sells their own skills and services directly to businesses of any kind - a dental practice, a pharmacy, a logistics firm, a software company. You are not an agency and never speak as a company: always 'I', never 'we'. The only job of the email is to get opened and get a reply. You write plainly, like a competent person who has done the homework, never like a campaign. You never claim experience, clients, or results you were not given."
 
+SHORT_SYSTEM = "You write cold outreach on behalf of one independent specialist who sells their own skills and services directly to businesses of any kind - a dental practice, a pharmacy, a logistics firm, a software company. You are not an agency and never speak as a company: always 'I', never 'we'. You are writing the first message to a stranger, and its only job is to start a conversation. Brevity is the strategy, not a constraint: a short message reads as a person, a long one reads as a campaign and gets deleted. Every word must earn its place - you write plainly, choose words with care, and never pad."
+
 STRATEGIES = [
+# Brevity as the strategy: three sentences, aimed at a reply rather than a
+# booking. Short reads as a person; long reads as a campaign.
     {
         "name": "5-part cold email (open + reply)",
         "description": "Pattern-interrupt subject, proper intro, value prop, objection handled up front, then a named 3-step process. Longer by design.",
@@ -42,6 +46,16 @@ STRATEGIES = [
         "max_words": 220,
         "subject_hint": "3-7 words, lowercase, uses their city, company, or a distinctive detail. Slightly oblique - curiosity, not marketing. No question marks or emoji.",
         "is_default": True,
+    },
+    {
+        "name": "3-sentence opener (start a conversation)",
+        "description": "Three sentences, nothing more. Not a pitch - an opening line that is easier to answer than to ignore.",
+        "system_prompt": SHORT_SYSTEM,
+        "instructions": "Write a cold email of EXACTLY THREE SENTENCES in the body. Not four. Not two.\n\nThe subject line is separate and does not count. Keep it 2-5 words, lowercase, and concrete - their company name, their city, or the specific thing you noticed. It should read like a note from someone who already knows them, never like marketing. Never use a filler word such as quick, question, hello, touching base, idea, opportunity, or growth - those signal a mass send. If you have nothing specific to name, use their role and industry instead.\n\nSENTENCE 1 - Show you looked. Name one specific, verifiable thing about their business or role, taken from the context. Not a compliment and not a summary of what they do - one detail that proves this email was not blasted to a list. If the context is thin, name their role and the reality of it instead.\n\nSENTENCE 2 - Say what you would do about it. One concrete capability from ABOUT THE SENDER, tied directly to the thing you just named, in plain language they would use themselves. No jargon, no feature lists, no 'solutions' or 'leverage'. If they run a clinic, say booking and rescheduling, not 'conversational AI workflows'.\n\nSENTENCE 3 - Ask one question that is easy to answer. It must be answerable in a single line - ideally yes or no, or 'how do you handle X right now'. Never ask for a meeting, a call, a demo, or fifteen minutes: the goal of this email is a REPLY, not a booking. A question they can answer from their phone in ten seconds is the entire point.\n\nHard rules:\n- Exactly three sentences. Count them before you answer.\n- No greeting line beyond 'Hi <first name>,' and no sign-off beyond the sender's name. Neither counts as a sentence.\n- No semicolons and no em-dash chains used to smuggle in a fourth clause. Short, clean sentences.\n- Never invent a client, a number, a result, or a technology that is not in ABOUT THE SENDER.\n- No flattery ('impressive work', 'love what you're building'), no hype, no exclamation marks, no 'I hope this finds you well'.\n- Do not explain your process, your background, or your pricing. That is what the reply is for.",
+        "tone": "Plain and human. Confident, not eager. Reads like a note from a competent person who is busy too.",
+        "max_words": 60,
+        "subject_hint": "2-5 words, lowercase, concrete. Their company, city, or the detail you noticed. Never a question mark or emoji, and never a filler word like quick, question, touching base, idea, opportunity, or growth.",
+        "is_default": False,
     },
     {
         "name": "Problem-first",
