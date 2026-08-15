@@ -182,6 +182,25 @@ def test_three_sentence_strategy_enforces_its_shape():
     assert short["max_words"] <= 80
 
 
+def test_free_demo_strategy_offers_real_work_not_a_sketch():
+    """The hook is building something that runs. If it degrades into 'I have
+    some ideas' or an audit offer, it becomes ordinary bait."""
+    from app.seed_strategies import STRATEGIES
+
+    demo = next(s for s in STRATEGIES if s["name"].startswith("Free working demo"))
+    instructions = demo["instructions"]
+
+    assert "EXACTLY THREE SENTENCES" in instructions
+    assert "actually BUILD" in instructions
+    # Sales language undoes the gesture.
+    for banned in ("no obligation", "free consultation", "proof of concept"):
+        assert banned in instructions  # named so the model avoids them
+    # The demo must not require access to their systems to build.
+    assert "must work from what is publicly available" in instructions
+    # Reply, not a booking.
+    assert "Never ask for a call" in instructions
+
+
 def test_strategies_span_short_and_long_openers():
     """The set should offer both a conversation opener and a full pitch."""
     from app.seed_strategies import STRATEGIES
