@@ -8,7 +8,8 @@ import {
   reorderStepsAction,
   updateStepAction,
 } from "@/app/automation-actions";
-import type { AutomationSequence, SequenceStep } from "@/lib/types";
+import type { AutomationSequence, AutomationSettings, SequenceStep } from "@/lib/types";
+import { windowSummary } from "@/lib/schedule-preview";
 import type { Strategy } from "@/lib/prospect-types";
 import { Toast, useToast } from "@/components/toast";
 
@@ -22,6 +23,7 @@ function StepRow({
   dayOffset,
   sequenceId,
   openers,
+  defaultTimeLabel,
   onMove,
   moving,
 }: {
@@ -31,6 +33,7 @@ function StepRow({
   dayOffset: number;
   sequenceId: string;
   openers: Strategy[];
+  defaultTimeLabel: string;
   onMove: (index: number, direction: -1 | 1) => void;
   moving: boolean;
 }) {
@@ -43,6 +46,7 @@ function StepRow({
   const [showInstructions, setShowInstructions] = useState(
     Boolean(step.step_instructions),
   );
+  const [showTime, setShowTime] = useState(false);
   const [pending, startTransition] = useTransition();
   const { toast, show } = useToast();
   const router = useRouter();
@@ -141,26 +145,13 @@ function StepRow({
           </div>
         </div>
 
-        <div className="mt-3 grid gap-4 sm:grid-cols-3">
-          <div>
-            <label className="label text-xs" htmlFor={`wait-${step.id}`}>
-              Wait (days)
-            </label>
-            <input
-              id={`wait-${step.id}`}
-              type="number"
-              min={0}
-              max={90}
-              value={form.wait_days}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, wait_days: Number(e.target.value) }))
-              }
-              className="input"
-            />
-          </div>
+        {/* Strategy is what this step IS; the wait is when. Time-of-day is a
+            rarely-needed override and sits behind a disclosure so it stops
+            competing with the two fields that matter. */}
+        <div className="mt-3 grid gap-4 sm:grid-cols-[1fr_auto]">
           <div>
             <label className="label text-xs" htmlFor={`strategy-${step.id}`}>
-              Strategy
+              Write it with
             </label>
             <select
               id={`strategy-${step.id}`}
@@ -181,9 +172,28 @@ function StepRow({
               ))}
             </select>
           </div>
-          <div>
+          <div className="sm:w-40">
+            <label className="label text-xs" htmlFor={`wait-${step.id}`}>
+              {index === 0 ? "Days after enrolling" : "Days after step " + index}
+            </label>
+            <input
+              id={`wait-${step.id}`}
+              type="number"
+              min={0}
+              max={90}
+              value={form.wait_days}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, wait_days: Number(e.target.value) }))
+              }
+              className="input"
+            />
+          </div>
+        </div>
+
+        {showTime || form.send_at_time ? (
+          <div className="mt-3 sm:w-56">
             <label className="label text-xs" htmlFor={`time-${step.id}`}>
-              Send at (optional)
+              Send at this time of day
             </label>
             <input
               id={`time-${step.id}`}
@@ -192,8 +202,18 @@ function StepRow({
               onChange={(e) => setForm((f) => ({ ...f, send_at_time: e.target.value }))}
               className="input"
             />
+            <p className="mt-1 text-xs text-muted">
+              Leave empty to use your default{defaultTimeLabel}.
+            </p>
           </div>
-        </div>
+        ) : (
+          <button
+            onClick={() => setShowTime(true)}
+            className="mt-2 text-xs text-accent hover:underline"
+          >
+            + Set a time of day for this step
+          </button>
+        )}
 
         {showInstructions ? (
           <div className="mt-3">
@@ -358,9 +378,11 @@ function AddStepForm({
 export function SequenceBuilder({
   sequence,
   openers,
+  settings,
 }: {
   sequence: AutomationSequence;
   openers: Strategy[];
+  settings: AutomationSettings | null;
 }) {
   const [pending, startTransition] = useTransition();
   const { toast, show } = useToast();
@@ -375,6 +397,11 @@ export function SequenceBuilder({
     day += step.wait_days;
     offsets.push(day);
   }
+
+  // "(9:00 am)" -- so the per-step override says what it overrides.
+  const defaultTimeLabel = settings
+    ? ` (${settings.default_send_time.slice(0, 5)})`
+    : "";
 
   function move(index: number, direction: -1 | 1) {
     const ids = steps.map((s) => s.id);
@@ -391,7 +418,15 @@ export function SequenceBuilder({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-sm font-semibold text-ink">Steps</h2>
+      <div>
+        <h2 className="text-sm font-semibold text-ink">Steps</h2>
+        {settings && (
+          <p className="mt-1 text-xs text-muted">
+            Each step is written by Claude when it comes due, using the whole
+            thread so far. Sends {windowSummary(settings)}.
+          </p>
+        )}
+      </div>
 
       {openers.length === 0 && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
@@ -416,6 +451,7 @@ export function SequenceBuilder({
           dayOffset={offsets[index]}
           sequenceId={sequence.id}
           openers={openers}
+          defaultTimeLabel={defaultTimeLabel}
           onMove={move}
           moving={pending}
         />

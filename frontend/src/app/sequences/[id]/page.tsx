@@ -15,10 +15,13 @@ export default async function SequenceDetailPage({
 
   let sequences;
   let strategies;
+  let settings = null;
   try {
-    [sequences, strategies] = await Promise.all([
+    [sequences, strategies, settings] = await Promise.all([
       api.listAutomationSequences(),
       api.listStrategies(),
+      // Timing previews need the window; the page still works without it.
+      api.getAutomationSettings().catch(() => null),
     ]);
   } catch {
     notFound();
@@ -54,10 +57,15 @@ export default async function SequenceDetailPage({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <SequenceBuilder sequence={sequence} openers={openers} />
+          <SequenceBuilder sequence={sequence} openers={openers} settings={settings} />
         </div>
         <div className="lg:col-span-1">
-          <EnrollPanel sequenceId={sequence.id} hasSteps={sequence.steps.length > 0} />
+          <EnrollPanel
+            sequenceId={sequence.id}
+            hasSteps={sequence.steps.length > 0}
+            settings={settings}
+            steps={sequence.steps}
+          />
         </div>
       </div>
     </>

@@ -4,34 +4,27 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { enrollProspectsAction } from "@/app/automation-actions";
 import { api } from "@/lib/api";
-import type { EnrollMode } from "@/lib/types";
+import type { AutomationSettings, EnrollMode, SequenceStep } from "@/lib/types";
 import type { Prospect } from "@/lib/prospect-types";
+import {
+  clampToWindow,
+  formatInZone,
+  relativeDay,
+  scheduleFrom,
+  windowSummary,
+} from "@/lib/schedule-preview";
 import { Toast, useToast } from "@/components/toast";
-
-const MODES: { value: EnrollMode; label: string; hint: string }[] = [
-  {
-    value: "draft_now_send_later",
-    label: "Draft now, send later",
-    hint: "Default — uses your configured delay before sending.",
-  },
-  {
-    value: "send_now",
-    label: "Draft and send at next opportunity",
-    hint: "Goes out as soon as the send window and limits allow.",
-  },
-  {
-    value: "send_at",
-    label: "Draft now, send at a specific time",
-    hint: "Pick exactly when the first email leaves.",
-  },
-];
 
 export function EnrollPanel({
   sequenceId,
   hasSteps,
+  settings,
+  steps,
 }: {
   sequenceId: string;
   hasSteps: boolean;
+  settings: AutomationSettings | null;
+  steps: SequenceStep[];
 }) {
   const [query, setQuery] = useState("");
   const [prospects, setProspects] = useState<Prospect[]>([]);
@@ -73,6 +66,84 @@ export function EnrollPanel({
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  }
+
+  // When the first email actually leaves, under each option. Computed rather
+  // than described, because "uses your configured delay" told you nothing
+  // about which day that lands on.
+  const now = new Date();
+  const firstSend = settings
+    ? mode === "send_now"
+      ? clampToWindow(now, settings)
+      : mode === "send_at"
+      ? sendAt
+        ? clampToWindow(new Date(sendAt), settings)
+        : null
+      : scheduleFrom(
+          now,
+          settings.default_delay_days,
+          settings.default_send_time,
+          settings,
+        )
+    : null;
+
+  const modes: { value: EnrollMode; label: string; hint: string }[] = settings
+    ? [
+        {
+          value: "draft_now_send_later",
+          label: `Write now, send ${relativeDay(
+            now,
+            scheduleFrom(
+              now,
+              settings.default_delay_days,
+              settings.default_send_time,
+              settings,
+            ),
+          )}`,
+          hint: `${formatInZone(
+            scheduleFrom(now, settings.default_delay_days, settings.default_send_time, settings),
+            settings.timezone,
+          )} — you can read it before it goes. Recommended.`,
+        },
+        {
+          value: "send_now",
+          label: "Send as soon as possible",
+          hint:
+            clampToWindow(now, settings).getTime() - now.getTime() < 60_000
+              ? "The window is open, so this goes out within a minute or two."
+              : `The window is closed, so it waits until ${formatInZone(
+                  clampToWindow(now, settings),
+                  settings.timezone,
+                )}.`,
+        },
+        {
+          value: "send_at",
+          label: "Send at a time I pick",
+          hint: "Moved forward if it lands outside your send window.",
+        },
+      ]
+    : [
+        { value: "draft_now_send_later", label: "Write now, send later", hint: "Uses your configured delay." },
+        { value: "send_now", label: "Send as soon as possible", hint: "Subject to the send window." },
+        { value: "send_at", label: "Send at a time I pick", hint: "Clamped to the send window." },
+      ];
+
+  // The rest of the sequence, stacked onto that first send.
+  const plan: { position: number; when: string; strategy: string }[] = [];
+  if (settings && firstSend) {
+    let cursor = firstSend;
+    steps
+      .filter((s) => s.is_active)
+      .forEach((step, index) => {
+        if (index > 0) {
+          cursor = scheduleFrom(cursor, step.wait_days, step.send_at_time, settings);
+        }
+        plan.push({
+          position: step.position,
+          when: formatInZone(cursor, settings.timezone),
+          strategy: step.strategy_name ?? "No strategy set",
+        });
+      });
   }
 
   function enroll() {
@@ -159,9 +230,9 @@ export function EnrollPanel({
         )}
 
         <fieldset className="mt-4">
-          <legend className="label">First email timing</legend>
+          <legend className="label">When does the first email go out?</legend>
           <div className="space-y-2">
-            {MODES.map((option) => (
+            {modes.map((option) => (
               <label
                 key={option.value}
                 className="flex cursor-pointer items-start gap-2.5"
@@ -174,7 +245,7 @@ export function EnrollPanel({
                   onChange={() => setMode(option.value)}
                   className="mt-0.5 h-4 w-4 shrink-0 accent-[rgb(var(--accent))]"
                 />
-                <span>
+                <span className="min-w-0">
                   <span className="block text-sm text-ink">{option.label}</span>
                   <span className="block text-xs text-muted">{option.hint}</span>
                 </span>
@@ -191,6 +262,39 @@ export function EnrollPanel({
             />
           )}
         </fieldset>
+
+        {/* The whole plan in real dates. The builder shows day offsets; this
+            is where they become moments, which is what you actually agree to
+            when you press the button. */}
+        {settings && firstSend && (
+          <div className="mt-4 rounded-lg border border-line bg-surface-2/50 px-3 py-3">
+            <p className="text-xs font-medium text-ink">
+              What happens {selected.size > 0 ? `to ${selected.size} prospect${selected.size === 1 ? "" : "s"}` : "next"}
+            </p>
+            <ol className="mt-2 space-y-1">
+              {plan.map((entry) => (
+                <li key={entry.position} className="flex gap-2 text-xs">
+                  <span className="shrink-0 text-muted">{entry.position}.</span>
+                  <span className="min-w-0 text-muted">
+                    <span className="text-ink">{entry.when}</span>
+                    {" · "}
+                    {entry.strategy}
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-2 border-t border-line pt-2 text-xs text-muted">
+              Sends {windowSummary(settings)}. A reply cancels the rest.
+            </p>
+          </div>
+        )}
+
+        {settings?.dry_run && (
+          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+            Dry run is on — these will be written and scheduled, but nothing is
+            delivered.
+          </p>
+        )}
 
         <button
           onClick={enroll}
