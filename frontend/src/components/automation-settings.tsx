@@ -66,7 +66,13 @@ function Section({
       {description && <p className="mt-1 text-xs text-muted">{description}</p>}
       <div className="mt-4 space-y-4">{children}</div>
       {(onSave || onReset) && (
-        <div className="mt-4 flex items-center gap-2 border-t border-line pt-4">
+        <div
+          className={`mt-4 flex items-center gap-2 ${
+            // A lone reset link doesn't need a rule above it -- the divider
+            // reads as a footer only when there's a primary action to divide.
+            onSave ? "border-t border-line pt-4" : "pt-1"
+          }`}
+        >
           {onSave && (
             <button onClick={onSave} disabled={pending} className="btn-primary h-9">
               {pending ? "Saving…" : saveLabel}
@@ -133,38 +139,55 @@ function SafetySection({ settings }: { settings: AutomationSettings }) {
         pending={pending}
         onReset={() => reset("safety", "the safety switches")}
       >
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line px-4 py-3">
-          <div>
-            <p className="text-sm font-medium text-ink">Dry run</p>
-            <p className="text-xs text-muted">
-              Emails are fully processed but not delivered. Flip off to send for real.
-            </p>
-          </div>
-          <label className="flex items-center gap-2 text-sm text-ink">
-            <input
-              type="checkbox"
-              checked={settings.dry_run}
-              onChange={toggleDryRun}
+        {/* Two switch rows of equal weight. Neither is styled as an alarm
+            while idle -- the status strip above already carries the state, and
+            a permanently red control stops reading as a warning. */}
+        <div className="divide-y divide-line overflow-hidden rounded-lg border border-line">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-ink">Dry run</p>
+              <p className="mt-0.5 text-xs text-muted">
+                {settings.dry_run
+                  ? "Drafts, schedules and logs everything — delivers nothing."
+                  : "Live. Approved emails are delivered to real inboxes."}
+              </p>
+            </div>
+            {/* A button, not a checkbox: this row and the one below are the
+                same kind of switch, and turning dry run off opens a confirm
+                dialog -- which a checkbox's instant-toggle affordance lies
+                about. aria-pressed keeps the on/off state announced. */}
+            <button
+              onClick={toggleDryRun}
               disabled={pending}
-              className="h-4 w-4 rounded border-line accent-[rgb(var(--accent))]"
-            />
-            {settings.dry_run ? "On — nothing is delivered" : "Off — sending live"}
-          </label>
-        </div>
+              aria-pressed={settings.dry_run}
+              className={`h-9 shrink-0 ${
+                settings.dry_run ? "btn-secondary" : "btn-primary"
+              }`}
+            >
+              {settings.dry_run ? "Turn off — go live" : "Turn on dry run"}
+            </button>
+          </div>
 
-        <button
-          onClick={() => save({ sending_paused: !settings.sending_paused })}
-          disabled={pending}
-          className={`w-full rounded-lg border px-4 py-4 text-center text-sm font-semibold transition-colors ${
-            settings.sending_paused
-              ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-              : "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
-          }`}
-        >
-          {settings.sending_paused
-            ? "▶ Resume sending"
-            : "⏸ Pause all sending"}
-        </button>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-ink">Sending</p>
+              <p className="mt-0.5 text-xs text-muted">
+                {settings.sending_paused
+                  ? "Paused. Nothing leaves until you resume — drafting continues."
+                  : "Running. Due emails go out inside the window below."}
+              </p>
+            </div>
+            <button
+              onClick={() => save({ sending_paused: !settings.sending_paused })}
+              disabled={pending}
+              className={`h-9 shrink-0 ${
+                settings.sending_paused ? "btn-primary" : "btn-secondary"
+              }`}
+            >
+              {settings.sending_paused ? "Resume sending" : "Pause sending"}
+            </button>
+          </div>
+        </div>
       </Section>
       <Toast state={toast} />
     </>

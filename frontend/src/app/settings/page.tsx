@@ -38,16 +38,25 @@ export default async function SettingsPage() {
       {/* Status strip */}
       {status && (
         <div className="card mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 text-sm">
-          {status.dry_run && (
-            <span
-              title="Emails are fully processed but not delivered. Flip off to send for real."
-              className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-            >
-              Dry run
-            </span>
-          )}
+          {/* The pill states the mode; the sentence beside it says what that
+              means. Together they replace the separate banner that used to sit
+              below and repeat both. */}
+          <span
+            className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+              status.dry_run
+                ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+            }`}
+          >
+            {status.dry_run ? "Dry run" : "Live"}
+          </span>
+          <span className="text-muted">
+            {status.dry_run
+              ? "Nothing is delivered"
+              : "Emails are delivered for real"}
+          </span>
           {status.sending_paused && (
-            <span className="inline-flex items-center rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+            <span className="inline-flex shrink-0 items-center rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-700 dark:bg-rose-950 dark:text-rose-300">
               Paused
             </span>
           )}
@@ -73,16 +82,6 @@ export default async function SettingsPage() {
             />
             worker {status.worker_alive ? "alive" : "down"}
           </span>
-        </div>
-      )}
-
-      {status?.dry_run && (
-        <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm dark:border-amber-800 dark:bg-amber-950">
-          <p className="text-amber-900 dark:text-amber-200">
-            <strong>Dry run is on.</strong> Emails are fully processed — drafted,
-            scheduled, logged — but not delivered. Flip it off below to send for
-            real.
-          </p>
         </div>
       )}
 
