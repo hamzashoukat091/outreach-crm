@@ -13,9 +13,6 @@ import { windowSummary } from "@/lib/schedule-preview";
 import type { Strategy } from "@/lib/prospect-types";
 import { Toast, useToast } from "@/components/toast";
 
-/** The API sends times as "HH:MM:SS"; <input type="time"> wants "HH:MM". */
-const toHHMM = (t: string | null) => (t ? t.slice(0, 5) : "");
-
 function StepRow({
   step,
   index,
@@ -23,7 +20,6 @@ function StepRow({
   dayOffset,
   sequenceId,
   openers,
-  defaultTimeLabel,
   onMove,
   moving,
 }: {
@@ -33,27 +29,23 @@ function StepRow({
   dayOffset: number;
   sequenceId: string;
   openers: Strategy[];
-  defaultTimeLabel: string;
   onMove: (index: number, direction: -1 | 1) => void;
   moving: boolean;
 }) {
   const [form, setForm] = useState({
     wait_days: step.wait_days,
-    send_at_time: toHHMM(step.send_at_time),
     strategy_id: step.strategy_id ?? "",
     step_instructions: step.step_instructions ?? "",
   });
   const [showInstructions, setShowInstructions] = useState(
     Boolean(step.step_instructions),
   );
-  const [showTime, setShowTime] = useState(false);
   const [pending, startTransition] = useTransition();
   const { toast, show } = useToast();
   const router = useRouter();
 
   const dirty =
     form.wait_days !== step.wait_days ||
-    form.send_at_time !== toHHMM(step.send_at_time) ||
     form.strategy_id !== (step.strategy_id ?? "") ||
     form.step_instructions !== (step.step_instructions ?? "");
 
@@ -61,7 +53,6 @@ function StepRow({
     startTransition(async () => {
       const result = await updateStepAction(step.id, sequenceId, {
         wait_days: form.wait_days,
-        send_at_time: form.send_at_time || null,
         // Undefined is dropped by JSON.stringify, so an unset strategy is kept.
         strategy_id: form.strategy_id || undefined,
         step_instructions: form.step_instructions.trim() || null,
@@ -145,9 +136,9 @@ function StepRow({
           </div>
         </div>
 
-        {/* Strategy is what this step IS; the wait is when. Time-of-day is a
-            rarely-needed override and sits behind a disclosure so it stops
-            competing with the two fields that matter. */}
+        {/* Strategy is what this step IS; the wait is when. Time of day is
+            not set here -- every step uses the account default, so there is
+            one place to change it rather than one per step. */}
         <div className="mt-3 grid gap-4 sm:grid-cols-[1fr_auto]">
           <div>
             <label className="label text-xs" htmlFor={`strategy-${step.id}`}>
@@ -190,31 +181,6 @@ function StepRow({
           </div>
         </div>
 
-        {showTime || form.send_at_time ? (
-          <div className="mt-3 sm:w-56">
-            <label className="label text-xs" htmlFor={`time-${step.id}`}>
-              Send at this time of day
-            </label>
-            <input
-              id={`time-${step.id}`}
-              type="time"
-              value={form.send_at_time}
-              onChange={(e) => setForm((f) => ({ ...f, send_at_time: e.target.value }))}
-              className="input"
-            />
-            <p className="mt-1 text-xs text-muted">
-              Leave empty to use your default{defaultTimeLabel}.
-            </p>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowTime(true)}
-            className="mt-2 text-xs text-accent hover:underline"
-          >
-            + Set a time of day for this step
-          </button>
-        )}
-
         {showInstructions ? (
           <div className="mt-3">
             <label className="label text-xs" htmlFor={`instr-${step.id}`}>
@@ -252,7 +218,6 @@ function StepRow({
               onClick={() =>
                 setForm({
                   wait_days: step.wait_days,
-                  send_at_time: toHHMM(step.send_at_time),
                   strategy_id: step.strategy_id ?? "",
                   step_instructions: step.step_instructions ?? "",
                 })
@@ -280,7 +245,6 @@ function AddStepForm({
 }) {
   const [waitDays, setWaitDays] = useState(isFirst ? 0 : 3);
   const [strategyId, setStrategyId] = useState(openers[0]?.id ?? "");
-  const [sendAtTime, setSendAtTime] = useState("");
   const [instructions, setInstructions] = useState("");
   const [pending, startTransition] = useTransition();
   const { toast, show } = useToast();
@@ -290,14 +254,12 @@ function AddStepForm({
     startTransition(async () => {
       const result = await addStepAction(sequenceId, {
         wait_days: waitDays,
-        send_at_time: sendAtTime || null,
         strategy_id: strategyId,
         step_instructions: instructions.trim() || null,
       });
       show(result);
       if (result.ok) {
         setInstructions("");
-        setSendAtTime("");
         setWaitDays(3);
         router.refresh();
       }
@@ -308,21 +270,9 @@ function AddStepForm({
     <>
       <div className="card border-dashed p-5">
         <p className="text-sm font-semibold text-ink">Add a step</p>
-        <div className="mt-3 grid gap-4 sm:grid-cols-3">
+        <div className="mt-3 grid gap-4 sm:grid-cols-[1fr_auto]">
           <div>
-            <label className="label text-xs" htmlFor="new-wait">Wait (days)</label>
-            <input
-              id="new-wait"
-              type="number"
-              min={0}
-              max={90}
-              value={waitDays}
-              onChange={(e) => setWaitDays(Number(e.target.value))}
-              className="input"
-            />
-          </div>
-          <div>
-            <label className="label text-xs" htmlFor="new-strategy">Strategy</label>
+            <label className="label text-xs" htmlFor="new-strategy">Write it with</label>
             <select
               id="new-strategy"
               value={strategyId}
@@ -341,13 +291,17 @@ function AddStepForm({
               )}
             </select>
           </div>
-          <div>
-            <label className="label text-xs" htmlFor="new-time">Send at (optional)</label>
+          <div className="sm:w-40">
+            <label className="label text-xs" htmlFor="new-wait">
+              {isFirst ? "Days after enrolling" : "Days after previous"}
+            </label>
             <input
-              id="new-time"
-              type="time"
-              value={sendAtTime}
-              onChange={(e) => setSendAtTime(e.target.value)}
+              id="new-wait"
+              type="number"
+              min={0}
+              max={90}
+              value={waitDays}
+              onChange={(e) => setWaitDays(Number(e.target.value))}
               className="input"
             />
           </div>
@@ -398,11 +352,6 @@ export function SequenceBuilder({
     offsets.push(day);
   }
 
-  // "(9:00 am)" -- so the per-step override says what it overrides.
-  const defaultTimeLabel = settings
-    ? ` (${settings.default_send_time.slice(0, 5)})`
-    : "";
-
   function move(index: number, direction: -1 | 1) {
     const ids = steps.map((s) => s.id);
     const target = index + direction;
@@ -451,7 +400,6 @@ export function SequenceBuilder({
           dayOffset={offsets[index]}
           sequenceId={sequence.id}
           openers={openers}
-          defaultTimeLabel={defaultTimeLabel}
           onMove={move}
           moving={pending}
         />

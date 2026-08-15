@@ -55,7 +55,14 @@ export function clampToWindow(from: Date, settings: AutomationSettings): Date {
     const dayOk = days.includes(isoWeekday(cursor, tz));
     const nowMin = minutesInZone(cursor, tz);
 
-    if (dayOk && nowMin >= open && nowMin <= close) return cursor;
+    // End is EXCLUSIVE, matching within_send_window's `start <= t < end`.
+    // Treating it as inclusive put 09:00 inside a 01:00-09:00 window, so the
+    // preview showed a send the backend would actually defer to the next day.
+    const inWindow =
+      open <= close
+        ? nowMin >= open && nowMin < close
+        : nowMin >= open || nowMin < close; // overnight window
+    if (dayOk && inWindow) return cursor;
 
     if (dayOk && nowMin < open) {
       cursor.setMinutes(cursor.getMinutes() + (open - nowMin));
@@ -76,23 +83,69 @@ export function clampToWindow(from: Date, settings: AutomationSettings): Date {
   return cursor;
 }
 
-/** Add whole days, then land on `hhmm` if given, then clamp into the window. */
+/** The calendar date `days` ahead of `from`, as seen in `timeZone`. */
+function localDateParts(
+  from: Date,
+  days: number,
+  timeZone: string,
+): { y: number; m: number; d: number } {
+  const shifted = new Date(from.getTime() + days * 86_400_000);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone,
+  }).format(shifted);
+  const [y, m, d] = parts.split("-").map(Number);
+  return { y, m, d };
+}
+
+/** The UTC instant of `hhmm` on a given local date in `timeZone`. */
+function instantAt(
+  date: { y: number; m: number; d: number },
+  hhmm: string,
+  timeZone: string,
+): Date {
+  const target = minutesOf(hhmm);
+  // Start from the UTC reading of that wall clock, then correct by however
+  // far the zone actually sits from UTC at that moment. Two passes settle
+  // the DST edge where the offset changes across the guess.
+  let guess = new Date(Date.UTC(date.y, date.m - 1, date.d, 0, 0) + target * 60_000);
+  for (let i = 0; i < 2; i++) {
+    const drift = minutesInZone(guess, timeZone) - target;
+    if (drift === 0) break;
+    // Drift wraps when the correction crosses midnight in the zone.
+    const adjust = drift > 720 ? drift - 1440 : drift < -720 ? drift + 1440 : drift;
+    guess = new Date(guess.getTime() - adjust * 60_000);
+  }
+  return guess;
+}
+
+/**
+ * Add whole days, land on `hhmm` in the settings timezone, clamp into the
+ * window. Mirrors resolve_send_time / next_window_open in the backend: the
+ * calendar date is computed in the SETTINGS zone, not the browser's, or a
+ * viewer in another timezone previews a different day than will be sent.
+ */
 export function scheduleFrom(
   start: Date,
   days: number,
   hhmm: string | null,
   settings: AutomationSettings,
 ): Date {
-  const next = new Date(start);
-  next.setDate(next.getDate() + days);
+  const tz = settings.timezone;
 
-  if (hhmm) {
-    // Set the wall-clock time in the settings timezone, not the browser's.
-    const target = minutesOf(hhmm);
-    const current = minutesInZone(next, settings.timezone);
-    next.setMinutes(next.getMinutes() + (target - current));
+  if (!hhmm) {
+    return clampToWindow(new Date(start.getTime() + days * 86_400_000), settings);
   }
-  return clampToWindow(next, settings);
+
+  const date = localDateParts(start, days, tz);
+  let candidate = instantAt(date, hhmm, tz);
+  // Delay 0 with an early send time can land in the past; never preview a
+  // send behind the clock.
+  const now = new Date();
+  if (candidate < now) candidate = now;
+  return clampToWindow(candidate, settings);
 }
 
 /** "Thu 20 Aug, 9:00 am" in the settings timezone. */
