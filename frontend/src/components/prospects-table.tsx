@@ -8,6 +8,7 @@ import {
   bulkDeleteProspectsAction,
   generateBulkAction,
 } from "@/app/prospect-actions";
+import { bulkHandoffAction } from "@/app/automation-actions";
 import type { Prospect, Strategy } from "@/lib/prospect-types";
 import { EmptyState, Tag } from "@/components/ui";
 import { ProspectStatusBadge } from "@/components/prospect-ui";
@@ -66,6 +67,25 @@ export function ProspectsTable({
 
     startTransition(async () => {
       const result = await bulkArchiveAction([...selected], archived);
+      show(result);
+      if (result.ok) {
+        setSelected(new Set());
+        router.refresh();
+      }
+    });
+  }
+
+  function handoff() {
+    if (
+      !window.confirm(
+        `Hand off ${selected.size} prospect(s) to automation? The engine takes over their outreach.`,
+      )
+    ) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await bulkHandoffAction([...selected]);
       show(result);
       if (result.ok) {
         setSelected(new Set());
@@ -149,6 +169,14 @@ export function ProspectsTable({
                 title={selected.size > 25 ? "Generate at most 25 at a time" : undefined}
               >
                 {pending ? "Generating…" : `Generate ${selected.size} email(s)`}
+              </button>
+              <button
+                onClick={handoff}
+                disabled={pending}
+                className="btn-secondary h-9"
+                title="Let the automation engine run outreach for the selected prospects"
+              >
+                Hand off
               </button>
               <button
                 onClick={() => archive(true)}

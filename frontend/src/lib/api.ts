@@ -1,12 +1,20 @@
 import type {
-  Activity,
-  DashboardStats,
-  Enrollment,
-  EnrollResult,
-  Lead,
-  LeadList,
-  LeadStatus,
-  Sequence,
+  ApprovalItem,
+  AutomationAnalytics,
+  AutomationMessage,
+  AutomationMessageDetail,
+  AutomationSequence,
+  AutomationSettings,
+  AutomationStatus,
+  EnrollMode,
+  EnrollmentDetail,
+  EnrollmentRow,
+  EnrollResponse,
+  InboxItem,
+  MessageList,
+  SenderFacts,
+  SequenceStep,
+  SettingsSection,
 } from "./types";
 import type {
   Analytics,
@@ -68,87 +76,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  dashboard: () => request<DashboardStats>("/api/dashboard"),
-
-  listLeads: (params: {
-    q?: string;
-    status?: string;
-    tag?: string;
-    page?: number;
-    page_size?: number;
-  } = {}) => {
-    const qs = new URLSearchParams();
-    Object.entries(params).forEach(([k, v]) => {
-      if (v !== undefined && v !== null && v !== "") qs.set(k, String(v));
-    });
-    const suffix = qs.toString() ? `?${qs}` : "";
-    return request<LeadList>(`/api/leads${suffix}`);
-  },
-
-  getLead: (id: string) => request<Lead>(`/api/leads/${id}`),
-
-  createLead: (payload: Partial<Lead>) =>
-    request<Lead>("/api/leads", { method: "POST", body: JSON.stringify(payload) }),
-
-  updateLead: (id: string, payload: Partial<Lead>) =>
-    request<Lead>(`/api/leads/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
-
-  setLeadStatus: (id: string, status: LeadStatus) =>
-    request<Lead>(`/api/leads/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    }),
-
-  deleteLead: (id: string) => request<void>(`/api/leads/${id}`, { method: "DELETE" }),
-
-  leadActivities: (id: string) => request<Activity[]>(`/api/leads/${id}/activities`),
-
-  addActivity: (id: string, payload: { type: string; summary: string }) =>
-    request<Activity>(`/api/leads/${id}/activities`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-
-  listSequences: () => request<Sequence[]>("/api/sequences"),
-
-  getSequence: (id: string) => request<Sequence>(`/api/sequences/${id}`),
-
-  createSequence: (payload: unknown) =>
-    request<Sequence>("/api/sequences", { method: "POST", body: JSON.stringify(payload) }),
-
-  updateSequence: (id: string, payload: unknown) =>
-    request<Sequence>(`/api/sequences/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    }),
-
-  deleteSequence: (id: string) =>
-    request<void>(`/api/sequences/${id}`, { method: "DELETE" }),
-
-  listEnrollments: (params: { lead_id?: string; sequence_id?: string } = {}) => {
-    const qs = new URLSearchParams();
-    Object.entries(params).forEach(([k, v]) => v && qs.set(k, v));
-    const suffix = qs.toString() ? `?${qs}` : "";
-    return request<Enrollment[]>(`/api/enrollments${suffix}`);
-  },
-
-  enroll: (sequence_id: string, lead_ids: string[]) =>
-    request<EnrollResult>("/api/enrollments", {
-      method: "POST",
-      body: JSON.stringify({ sequence_id, lead_ids }),
-    }),
-
-  stopEnrollment: (id: string) =>
-    request<void>(`/api/enrollments/${id}`, { method: "DELETE" }),
-
-  runNow: () => request<Record<string, number>>("/api/enrollments/run-now", { method: "POST" }),
-
-  previewTemplate: (payload: { subject: string; body: string; lead_id?: string }) =>
-    request<{ subject: string; body: string; missing_fields: string[] }>("/api/leads/preview", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-
   // ---------- Prospects ----------
 
   listProspects: (
@@ -214,6 +141,20 @@ export const api = {
     request<ProspectEvent>(`/api/prospects/${id}/events`, {
       method: "POST",
       body: JSON.stringify(payload),
+    }),
+
+  // ---------- Pipeline handoff ----------
+
+  handoffProspect: (id: string) =>
+    request<Prospect>(`/api/prospects/${id}/handoff`, { method: "POST" }),
+
+  returnProspectToManual: (id: string) =>
+    request<Prospect>(`/api/prospects/${id}/return-to-manual`, { method: "POST" }),
+
+  bulkHandoffProspects: (ids: string[]) =>
+    request<{ updated: number; total: number }>("/api/prospects/bulk-handoff", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
     }),
 
   // ---------- Generation ----------
@@ -305,4 +246,173 @@ export const api = {
 
   health: () =>
     request<{ status: string; ai_configured: boolean; model: string }>("/health"),
+
+  // ---------- Automation: sequences ----------
+
+  listAutomationSequences: () =>
+    request<AutomationSequence[]>("/api/automation/sequences"),
+
+  createAutomationSequence: (payload: { name: string; description?: string }) =>
+    request<AutomationSequence>("/api/automation/sequences", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateAutomationSequence: (
+    id: string,
+    payload: Partial<{ name: string; description: string; is_active: boolean }>,
+  ) =>
+    request<AutomationSequence>(`/api/automation/sequences/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteAutomationSequence: (id: string) =>
+    request<void>(`/api/automation/sequences/${id}`, { method: "DELETE" }),
+
+  addSequenceStep: (
+    sequenceId: string,
+    payload: {
+      position?: number;
+      wait_days: number;
+      send_at_time?: string | null;
+      strategy_id: string;
+      step_instructions?: string | null;
+    },
+  ) =>
+    request<SequenceStep>(`/api/automation/sequences/${sequenceId}/steps`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateSequenceStep: (
+    stepId: string,
+    payload: Partial<{
+      wait_days: number;
+      send_at_time: string | null;
+      strategy_id: string;
+      step_instructions: string | null;
+      is_active: boolean;
+    }>,
+  ) =>
+    request<SequenceStep>(`/api/automation/steps/${stepId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteSequenceStep: (stepId: string) =>
+    request<void>(`/api/automation/steps/${stepId}`, { method: "DELETE" }),
+
+  reorderSequenceSteps: (sequenceId: string, ids: string[]) =>
+    request<SequenceStep[]>(`/api/automation/sequences/${sequenceId}/steps/reorder`, {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    }),
+
+  enrollProspects: (
+    sequenceId: string,
+    payload: { prospect_ids: string[]; mode: EnrollMode; send_at?: string },
+  ) =>
+    request<EnrollResponse>(`/api/automation/sequences/${sequenceId}/enroll`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  // ---------- Automation: enrollments ----------
+
+  listAutomationEnrollments: (
+    params: { state?: string; sequence_id?: string } = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => v && qs.set(k, v));
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<EnrollmentRow[]>(`/api/automation/enrollments${suffix}`);
+  },
+
+  getAutomationEnrollment: (id: string) =>
+    request<EnrollmentDetail>(`/api/automation/enrollments/${id}`),
+
+  pauseEnrollment: (id: string) =>
+    request<EnrollmentRow>(`/api/automation/enrollments/${id}/pause`, { method: "POST" }),
+
+  resumeEnrollment: (id: string) =>
+    request<EnrollmentRow>(`/api/automation/enrollments/${id}/resume`, { method: "POST" }),
+
+  stopEnrollment: (id: string) =>
+    request<EnrollmentRow>(`/api/automation/enrollments/${id}/stop`, { method: "POST" }),
+
+  // ---------- Automation: messages ----------
+
+  listAutomationMessages: (
+    params: {
+      state?: string;
+      direction?: string;
+      kind?: string;
+      prospect_id?: string;
+    } = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => v && qs.set(k, v));
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<MessageList>(`/api/automation/messages${suffix}`);
+  },
+
+  getAutomationMessage: (id: string) =>
+    request<AutomationMessageDetail>(`/api/automation/messages/${id}`),
+
+  approveMessage: (id: string, payload: { subject?: string; body?: string } = {}) =>
+    request<AutomationMessage>(`/api/automation/messages/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  rejectMessage: (id: string) =>
+    request<AutomationMessage>(`/api/automation/messages/${id}/reject`, {
+      method: "POST",
+    }),
+
+  regenerateMessage: (id: string) =>
+    request<AutomationMessage>(`/api/automation/messages/${id}/regenerate`, {
+      method: "POST",
+    }),
+
+  // ---------- Automation: inbox + approvals ----------
+
+  automationInbox: () => request<InboxItem[]>("/api/automation/inbox"),
+
+  automationApprovals: () => request<ApprovalItem[]>("/api/automation/approvals"),
+
+  // ---------- Automation: settings ----------
+
+  getAutomationSettings: () =>
+    request<AutomationSettings>("/api/automation/settings"),
+
+  updateAutomationSettings: (
+    payload: Partial<AutomationSettings & { smtp_password: string; imap_password: string }>,
+  ) =>
+    request<AutomationSettings>("/api/automation/settings", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  resetAutomationSettings: (section: SettingsSection) =>
+    request<AutomationSettings>("/api/automation/settings/reset", {
+      method: "POST",
+      body: JSON.stringify({ section }),
+    }),
+
+  getSenderFacts: () => request<SenderFacts>("/api/automation/sender-facts"),
+
+  updateSenderFacts: (payload: Partial<SenderFacts>) =>
+    request<SenderFacts>("/api/automation/sender-facts", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  // ---------- Automation: analytics + status ----------
+
+  automationAnalytics: () =>
+    request<AutomationAnalytics>("/api/automation/analytics"),
+
+  automationStatus: () => request<AutomationStatus>("/api/automation/status"),
 };

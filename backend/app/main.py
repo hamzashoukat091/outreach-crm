@@ -5,13 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
     analytics,
+    automation_admin,
+    automation_messages,
+    automation_sequences,
     dashboard,
     drafts,
-    enrollments,
-    leads,
     prospects,
     sender,
-    sequences,
     strategies,
 )
 from app.core.config import settings
@@ -34,17 +34,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(leads.router)
-app.include_router(sequences.router)
-app.include_router(enrollments.router)
 app.include_router(dashboard.router)
 
-# Prospect / AI-generation side of the app.
+# Prospect / AI-generation side of the app (manual outreach).
 app.include_router(prospects.router)
 app.include_router(sender.router)
 app.include_router(strategies.router)
 app.include_router(drafts.router)
 app.include_router(analytics.router)
+
+# Sequences automation layer.
+app.include_router(automation_sequences.router)
+app.include_router(automation_messages.router)
+app.include_router(automation_admin.router)
 
 
 @app.get("/health", tags=["ops"])

@@ -54,7 +54,8 @@ export default async function ProspectsPage({
   }
 
   const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
-  const activeStrategies = strategies.filter((s) => s.is_active);
+  // Reply strategies belong to the automation engine, not manual generation.
+  const activeStrategies = strategies.filter((s) => s.is_active && s.kind !== "reply");
   const seniorities = analytics?.by_seniority.map((s) => s.label) ?? [];
   const incomplete = analytics?.incomplete ?? 0;
 

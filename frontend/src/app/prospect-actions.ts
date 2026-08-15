@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { api, ApiError } from "@/lib/api";
-import type { EmailDraft, Prospect, ProspectStatus } from "@/lib/prospect-types";
+import type {
+  EmailDraft,
+  Prospect,
+  ProspectStatus,
+  ReplySituation,
+  StrategyKind,
+} from "@/lib/prospect-types";
 
 export type ActionState = { ok: boolean; message: string };
 
@@ -14,7 +20,7 @@ function fail(error: unknown): ActionState {
 function refreshProspect(id?: string) {
   revalidatePath("/prospects");
   revalidatePath("/analytics");
-  revalidatePath("/outbox");
+  revalidatePath("/dashboard");
   if (id) revalidatePath(`/prospects/${id}`);
 }
 
@@ -271,7 +277,7 @@ export async function generateBulkAction(
     const failed = result.failed ? `, ${result.failed} failed` : "";
     return {
       ok: true,
-      message: `Generated ${result.generated} draft(s)${failed}. Review them in the Outbox.`,
+      message: `Generated ${result.generated} draft(s)${failed}. Review them on each prospect's page.`,
     };
   } catch (error) {
     return fail(error);
@@ -351,6 +357,9 @@ export async function saveStrategyAction(
     max_words: number;
     subject_hint: string;
     is_default: boolean;
+    kind: StrategyKind;
+    reply_situation: ReplySituation | null;
+    priority: number;
   },
 ): Promise<ActionState> {
   if (!payload.name.trim()) return { ok: false, message: "Give the strategy a name." };
@@ -359,6 +368,9 @@ export async function saveStrategyAction(
   }
   if (!payload.system_prompt.trim()) {
     return { ok: false, message: "System prompt can't be empty." };
+  }
+  if (payload.kind === "reply" && !payload.reply_situation) {
+    return { ok: false, message: "Pick which situation this reply strategy handles." };
   }
 
   try {

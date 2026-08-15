@@ -48,6 +48,18 @@ class ProspectEventType(str, enum.Enum):
     note = "note"
     archived = "archived"
     unarchived = "unarchived"
+    # --- automation ---
+    handed_off = "handed_off"          # manual -> automated
+    returned_to_manual = "returned_to_manual"
+    enrolled = "enrolled"
+    unenrolled = "unenrolled"
+    message_scheduled = "message_scheduled"
+    message_sent = "message_sent"
+    message_failed = "message_failed"
+    reply_received = "reply_received"
+    reply_sent = "reply_sent"
+    escalated = "escalated"
+    suppressed = "suppressed"
 
 
 class Prospect(Base):
@@ -110,6 +122,13 @@ class Prospect(Base):
         Enum(ProspectStatus, name="prospect_status"),
         default=ProspectStatus.new,
         nullable=False,
+    )
+    # Which side of the app owns this prospect: 'manual' (Outreach section,
+    # drafts copied by hand) or 'automated' (Sequences section, system sends).
+    # A plain string rather than the PipelineMode enum so flipping it never
+    # requires an ALTER TYPE.
+    pipeline_mode: Mapped[str] = mapped_column(
+        String(20), default="manual", nullable=False, index=True
     )
     # False when the export gave us an email but no company context. Surfaced in
     # the UI so a thin generation is never mistaken for a well-grounded one.
@@ -205,13 +224,27 @@ class SenderProfile(Base):
 
 
 class Strategy(Base):
-    """A saved, editable generation prompt."""
+    """A saved, editable generation prompt.
+
+    kind='opener' strategies write cold first-touches and follow-ups; the user
+    picks one per sequence step. kind='reply' strategies answer inbound mail;
+    the classifier picks one by matching the reply's situation, taking the
+    highest-priority active strategy when several claim the same situation.
+    """
 
     __tablename__ = "strategies"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
+
+    kind: Mapped[str] = mapped_column(
+        String(20), default="opener", nullable=False, index=True
+    )
+    # Reply strategies only: which classified situation this handles.
+    reply_situation: Mapped[str | None] = mapped_column(String(40), index=True)
+    # Routing order when several reply strategies handle the same situation.
+    priority: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
 
     # The editable prompt surface.
     system_prompt: Mapped[str] = mapped_column(Text, nullable=False)

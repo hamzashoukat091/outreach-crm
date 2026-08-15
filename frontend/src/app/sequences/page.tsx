@@ -1,6 +1,6 @@
+import Link from "next/link";
 import { api } from "@/lib/api";
-import { SequenceBuilder } from "@/components/sequence-builder";
-import { SequenceCard } from "@/components/sequence-card";
+import { SequenceList } from "@/components/sequence-list";
 import { EmptyState, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function SequencesPage() {
   let sequences;
   try {
-    sequences = await api.listSequences();
+    sequences = await api.listAutomationSequences();
   } catch {
     return (
       <div className="card">
@@ -24,25 +24,19 @@ export default async function SequencesPage() {
     <>
       <PageHeader
         title="Sequences"
-        description="Multi-step email templates with a delay between each touch."
-        action={sequences.length > 0 ? <SequenceBuilder /> : undefined}
+        description="Automated multi-step outreach. Enroll prospects and the engine drafts, waits, and follows up."
       />
 
-      {sequences.length === 0 ? (
-        <div className="card">
-          <EmptyState
-            title="No sequences yet"
-            description="A sequence is an ordered set of emails with a wait between each one. Create your first to start enrolling leads."
-            action={<SequenceBuilder />}
-          />
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {sequences.map((sequence) => (
-            <SequenceCard key={sequence.id} sequence={sequence} />
-          ))}
-        </div>
-      )}
+      <div className="mb-4 flex gap-2">
+        <Link href="/sequences" className="btn-primary">
+          Sequences
+        </Link>
+        <Link href="/sequences/enrollments" className="btn-secondary">
+          Enrollments
+        </Link>
+      </div>
+
+      <SequenceList sequences={sequences} />
     </>
   );
 }

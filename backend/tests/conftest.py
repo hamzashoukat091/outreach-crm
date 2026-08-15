@@ -28,10 +28,13 @@ def engine():
     admin.dispose()
 
     eng = create_engine(TEST_DB_URL)
-    # Rebuild from current metadata every run. create_all() alone only adds
-    # missing tables, so a new column on an existing table would be silently
-    # absent and every test touching it would fail on a stale schema.
-    Base.metadata.drop_all(eng)
+    # Rebuild from current metadata every run. A schema-level reset rather
+    # than drop_all(): drop_all only knows the CURRENT models, so tables from
+    # removed layers (with FKs into surviving ones) would block the drop and
+    # poison every run against an older test database.
+    with eng.begin() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
     Base.metadata.create_all(eng)
     yield eng
     eng.dispose()

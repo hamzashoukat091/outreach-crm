@@ -7,8 +7,18 @@ import {
   previewPromptAction,
   saveStrategyAction,
 } from "@/app/prospect-actions";
-import type { Strategy } from "@/lib/prospect-types";
+import type { ReplySituation, Strategy, StrategyKind } from "@/lib/prospect-types";
 import { Toast, useToast } from "@/components/toast";
+
+/** The situations a reply strategy can be written for. Users edit these six. */
+const REPLY_SITUATIONS: { value: ReplySituation; label: string }[] = [
+  { value: "interested", label: "Interested" },
+  { value: "question", label: "Question" },
+  { value: "objection", label: "Objection" },
+  { value: "not_now", label: "Not now" },
+  { value: "referral", label: "Referral" },
+  { value: "not_interested", label: "Not interested" },
+];
 
 const BLANK = {
   name: "",
@@ -23,15 +33,21 @@ const BLANK = {
   max_words: 150,
   subject_hint: "",
   is_default: false,
+  reply_situation: null as ReplySituation | null,
+  priority: 100,
 };
 
 export function StrategyEditor({
   strategy,
+  kind = "opener",
   onDone,
 }: {
   strategy?: Strategy;
+  /** Used when creating; an existing strategy keeps its own kind. */
+  kind?: StrategyKind;
   onDone?: () => void;
 }) {
+  const effectiveKind = strategy?.kind ?? kind;
   const [form, setForm] = useState(
     strategy
       ? {
@@ -43,8 +59,10 @@ export function StrategyEditor({
           max_words: strategy.max_words,
           subject_hint: strategy.subject_hint ?? "",
           is_default: strategy.is_default,
+          reply_situation: strategy.reply_situation,
+          priority: strategy.priority,
         }
-      : BLANK,
+      : { ...BLANK, reply_situation: kind === "reply" ? REPLY_SITUATIONS[0].value : null },
   );
   const [preview, setPreview] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -57,7 +75,11 @@ export function StrategyEditor({
 
   function save() {
     startTransition(async () => {
-      const result = await saveStrategyAction(strategy?.id ?? null, form);
+      const result = await saveStrategyAction(strategy?.id ?? null, {
+        ...form,
+        kind: effectiveKind,
+        reply_situation: effectiveKind === "reply" ? form.reply_situation : null,
+      });
       show(result);
       if (result.ok) {
         router.refresh();
@@ -180,6 +202,47 @@ export function StrategyEditor({
           </div>
         </div>
 
+        {effectiveKind === "reply" && (
+          <div className="grid gap-4 border-t border-line pt-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="s-situation">
+                Handles situation <span className="text-rose-500">*</span>
+              </label>
+              <select
+                id="s-situation"
+                value={form.reply_situation ?? ""}
+                onChange={(e) =>
+                  patch("reply_situation", e.target.value as ReplySituation)
+                }
+                className="input"
+              >
+                {REPLY_SITUATIONS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-muted">
+                Used when an inbound reply is classified as this.
+              </p>
+            </div>
+            <div>
+              <label className="label" htmlFor="s-priority">Priority</label>
+              <input
+                id="s-priority"
+                type="number"
+                min={0}
+                value={form.priority}
+                onChange={(e) => patch("priority", Number(e.target.value))}
+                className="input"
+              />
+              <p className="mt-1 text-xs text-muted">
+                Lower number wins when several handle the same situation.
+              </p>
+            </div>
+          </div>
+        )}
+
         <label className="flex items-center gap-2 text-sm text-ink">
           <input
             type="checkbox"
@@ -262,6 +325,11 @@ export function StrategyCard({ strategy }: { strategy: Strategy }) {
                   default
                 </span>
               )}
+              {strategy.kind === "reply" && strategy.reply_situation && (
+                <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted">
+                  {strategy.reply_situation.replace("_", " ")}
+                </span>
+              )}
             </div>
             {strategy.description && (
               <p className="mt-0.5 text-sm text-muted">{strategy.description}</p>
@@ -270,6 +338,7 @@ export function StrategyCard({ strategy }: { strategy: Strategy }) {
               {strategy.max_words} words max · used {strategy.usage_count} time
               {strategy.usage_count === 1 ? "" : "s"}
               {strategy.tone && ` · ${strategy.tone}`}
+              {strategy.kind === "reply" && ` · priority ${strategy.priority}`}
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
@@ -296,14 +365,14 @@ export function StrategyCard({ strategy }: { strategy: Strategy }) {
   );
 }
 
-export function NewStrategyButton() {
+export function NewStrategyButton({ kind = "opener" }: { kind?: StrategyKind }) {
   const [open, setOpen] = useState(false);
 
-  if (open) return <StrategyEditor onDone={() => setOpen(false)} />;
+  if (open) return <StrategyEditor kind={kind} onDone={() => setOpen(false)} />;
 
   return (
     <button onClick={() => setOpen(true)} className="btn-primary">
-      New strategy
+      {kind === "reply" ? "New reply strategy" : "New strategy"}
     </button>
   );
 }

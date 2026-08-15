@@ -4,13 +4,9 @@ set -e
 echo "Running migrations..."
 alembic upgrade head
 
-if [ "$SEED_ON_START" = "true" ]; then
-  echo "Seeding demo data..."
-  python -m app.seed
-fi
-
-# Starter strategies are always seeded (idempotent by name) so the AI composer
-# is usable immediately after import.
+# Starter strategies (openers + reply handlers) are always seeded (idempotent
+# by name) so the AI composer is usable immediately after import. The old demo
+# lead seeder went with the leads layer.
 python -m app.seed_strategies
 
 echo "Starting API on :8000"

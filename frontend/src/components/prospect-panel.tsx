@@ -10,7 +10,12 @@ import {
   setProspectStatusAction,
   updateProspectAction,
 } from "@/app/prospect-actions";
+import {
+  handoffProspectAction,
+  returnToManualAction,
+} from "@/app/automation-actions";
 import type { Prospect, ProspectStatus, Strategy } from "@/lib/prospect-types";
+import { PipelineModeBadge } from "@/components/automation-ui";
 import { Toast, useToast } from "@/components/toast";
 
 // 'archived' is not a status here -- use the Archive button, which preserves
@@ -42,10 +47,12 @@ export function ProspectPanel({
   prospect,
   strategies,
   aiConfigured,
+  hasOpenEnrollment = false,
 }: {
   prospect: Prospect;
   strategies: Strategy[];
   aiConfigured: boolean;
+  hasOpenEnrollment?: boolean;
 }) {
   const router = useRouter();
   const { toast, show } = useToast();
@@ -136,9 +143,51 @@ export function ProspectPanel({
     });
   }
 
+  const automated = prospect.pipeline_mode === "automated";
+
+  function togglePipeline() {
+    startTransition(async () => {
+      const result = automated
+        ? await returnToManualAction(prospect.id)
+        : await handoffProspectAction(prospect.id);
+      show(result);
+      if (result.ok) router.refresh();
+    });
+  }
+
   return (
     <>
       <div className="space-y-4">
+        <div className="card p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-ink">Pipeline</h2>
+            <PipelineModeBadge mode={prospect.pipeline_mode} />
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            {automated
+              ? "The automation engine drafts, sends, and follows up for this prospect."
+              : "You write and send emails for this prospect by hand."}
+          </p>
+          <button
+            onClick={togglePipeline}
+            disabled={pending || prospect.is_archived || (automated && hasOpenEnrollment)}
+            title={
+              automated && hasOpenEnrollment
+                ? "Stop their open enrollment first — a sequence is still running."
+                : undefined
+            }
+            className="btn-secondary mt-3 w-full"
+          >
+            {automated ? "Return to manual" : "Hand off to automation"}
+          </button>
+          {automated && hasOpenEnrollment && (
+            <p className="mt-2 text-xs text-muted">
+              A sequence is still running. Stop the enrollment before returning
+              to manual.
+            </p>
+          )}
+        </div>
+
         <div className="card p-5">
           <h2 className="text-sm font-semibold text-ink">Generate email</h2>
 

@@ -10,6 +10,23 @@ export type ProspectStatus =
 
 export type DraftStatus = "draft" | "approved" | "discarded" | "failed";
 
+/** Who runs outreach for this prospect: you, or the automation worker. */
+export type PipelineMode = "manual" | "automated";
+
+export type StrategyKind = "opener" | "reply";
+
+/** How an inbound reply was classified. The first six are user-editable. */
+export type ReplySituation =
+  | "interested"
+  | "question"
+  | "objection"
+  | "not_now"
+  | "referral"
+  | "not_interested"
+  | "unsubscribe"
+  | "auto_reply"
+  | "unclear";
+
 export type ProspectEventType =
   | "imported"
   | "updated"
@@ -52,6 +69,7 @@ export interface Prospect {
   naics: string | null;
   display_company: string;
   status: ProspectStatus;
+  pipeline_mode: PipelineMode;
   is_complete: boolean;
   missing_fields: string[];
   company_inferred: boolean;
@@ -92,6 +110,11 @@ export interface Strategy {
   is_active: boolean;
   usage_count: number;
   created_at: string;
+  kind: StrategyKind;
+  /** Which classified situation this reply strategy handles. Null for openers. */
+  reply_situation: ReplySituation | null;
+  /** Lower number wins when several strategies handle the same situation. */
+  priority: number;
 }
 
 export interface EmailDraft {

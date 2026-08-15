@@ -1,3 +1,10 @@
+"""The / dashboard, rebuilt on prospects + automation messages.
+
+The response keeps the original field names (total_leads, upcoming, ...) so
+the existing frontend page renders unchanged; only the data source moved when
+the old leads layer was removed.
+"""
+
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
@@ -6,39 +13,42 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.models import (
-    Enrollment,
-    EnrollmentStatus,
-    Lead,
-    LeadStatus,
-    ScheduledSend,
-    SendStatus,
+    EnrollmentState,
+    Message,
+    MessageDirection,
+    MessageState,
+    Prospect,
+    ProspectStatus,
     Sequence,
-    SequenceStep,
+    SequenceEnrollment,
 )
-from app.schemas import DashboardStats, PipelineBucket, UpcomingSend
+from app.schemas.schemas import DashboardStats, PipelineBucket, UpcomingSend
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 # Statuses that count as a positive response for the reply-rate metric.
-REPLY_STATUSES = (LeadStatus.replied, LeadStatus.qualified, LeadStatus.won)
+REPLY_STATUSES = (ProspectStatus.replied, ProspectStatus.won)
 
 
 @router.get("", response_model=DashboardStats)
 def get_stats(db: Session = Depends(get_db)):
-    total_leads = db.scalar(select(func.count(Lead.id))) or 0
+    active = Prospect.is_archived.is_(False)
+
+    total = db.scalar(select(func.count(Prospect.id)).where(active)) or 0
 
     counts = dict(
-        db.execute(select(Lead.status, func.count(Lead.id)).group_by(Lead.status)).all()
+        db.execute(
+            select(Prospect.status, func.count(Prospect.id)).where(active).group_by(Prospect.status)
+        ).all()
     )
     pipeline = [
-        PipelineBucket(status=s, count=counts.get(s, 0))
-        for s in LeadStatus
+        PipelineBucket(status=s.value, count=counts.get(s, 0)) for s in ProspectStatus
     ]
 
     active_enrollments = (
         db.scalar(
-            select(func.count(Enrollment.id)).where(
-                Enrollment.status == EnrollmentStatus.active
+            select(func.count(SequenceEnrollment.id)).where(
+                SequenceEnrollment.state == EnrollmentState.active
             )
         )
         or 0
@@ -47,8 +57,10 @@ def get_stats(db: Session = Depends(get_db)):
     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     sends_last_7_days = (
         db.scalar(
-            select(func.count(ScheduledSend.id)).where(
-                ScheduledSend.status == SendStatus.sent, ScheduledSend.sent_at >= week_ago
+            select(func.count(Message.id)).where(
+                Message.direction == MessageDirection.outbound,
+                Message.state == MessageState.sent,
+                Message.sent_at >= week_ago,
             )
         )
         or 0
@@ -56,17 +68,20 @@ def get_stats(db: Session = Depends(get_db)):
 
     sends_scheduled = (
         db.scalar(
-            select(func.count(ScheduledSend.id)).where(
-                ScheduledSend.status == SendStatus.scheduled
+            select(func.count(Message.id)).where(
+                Message.direction == MessageDirection.outbound,
+                Message.state.in_((MessageState.scheduled, MessageState.drafting)),
             )
         )
         or 0
     )
 
-    # Reply rate is measured against leads actually contacted, not the whole list.
+    # Reply rate against prospects actually contacted (anything past 'new'/'drafted').
     contacted = (
         db.scalar(
-            select(func.count(Lead.id)).where(Lead.status != LeadStatus.new)
+            select(func.count(Prospect.id)).where(
+                active, Prospect.status.notin_((ProspectStatus.new, ProspectStatus.drafted))
+            )
         )
         or 0
     )
@@ -74,33 +89,36 @@ def get_stats(db: Session = Depends(get_db)):
     reply_rate = round((replied / contacted) * 100, 1) if contacted else 0.0
 
     upcoming_rows = db.execute(
-        select(ScheduledSend, Lead, Sequence, SequenceStep)
-        .join(Enrollment, ScheduledSend.enrollment_id == Enrollment.id)
-        .join(Lead, Enrollment.lead_id == Lead.id)
-        .join(Sequence, Enrollment.sequence_id == Sequence.id)
-        .join(SequenceStep, ScheduledSend.step_id == SequenceStep.id)
+        select(Message, Prospect, Sequence)
+        .join(Prospect, Message.prospect_id == Prospect.id)
+        .join(SequenceEnrollment, Message.enrollment_id == SequenceEnrollment.id)
+        .join(Sequence, SequenceEnrollment.sequence_id == Sequence.id)
         .where(
-            ScheduledSend.status == SendStatus.scheduled,
-            Enrollment.status == EnrollmentStatus.active,
+            Message.direction == MessageDirection.outbound,
+            Message.state.in_((MessageState.scheduled, MessageState.drafting)),
+            SequenceEnrollment.state == EnrollmentState.active,
         )
-        .order_by(ScheduledSend.scheduled_for)
+        .order_by(Message.scheduled_for)
         .limit(10)
     ).all()
 
     upcoming = [
         UpcomingSend(
-            id=send.id,
-            lead_email=lead.email,
-            lead_name=lead.full_name,
+            id=message.id,
+            lead_email=prospect.email,
+            lead_name=prospect.full_name,
             sequence_name=sequence.name,
-            subject=step.subject,
-            scheduled_for=send.scheduled_for,
+            # Drafting messages have no subject yet -- the text is written
+            # closer to send time.
+            subject=message.subject or "(drafting…)",
+            scheduled_for=message.scheduled_for,
         )
-        for send, lead, sequence, step in upcoming_rows
+        for message, prospect, sequence in upcoming_rows
+        if message.scheduled_for
     ]
 
     return DashboardStats(
-        total_leads=total_leads,
+        total_leads=total,
         pipeline=pipeline,
         active_enrollments=active_enrollments,
         sends_last_7_days=sends_last_7_days,

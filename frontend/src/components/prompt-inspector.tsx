@@ -127,7 +127,15 @@ function Collapsible({
   );
 }
 
-export function PromptInspector({ draftId }: { draftId: string }) {
+export function PromptInspector({
+  draftId,
+  source = "draft",
+}: {
+  draftId: string;
+  /** "draft" reads the manual-draft prompt endpoint; "message" reads the
+   *  automation message detail, which carries the same provenance fields. */
+  source?: "draft" | "message";
+}) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<DraftPrompt | null>(null);
   const [loading, setLoading] = useState(false);
@@ -163,10 +171,33 @@ export function PromptInspector({ draftId }: { draftId: string }) {
 
     setLoading(true);
     try {
-      setData(await api.draftPrompt(draftId));
+      if (source === "message") {
+        const m = await api.getAutomationMessage(draftId);
+        // Same provenance, different envelope: shape it like a draft prompt
+        // so one modal serves both halves of the app.
+        setData({
+          draft_id: m.id,
+          created_at: m.created_at,
+          available: Boolean(m.user_prompt),
+          prospect_email: m.prospect_email ?? m.to_address ?? "",
+          model: m.model ?? "",
+          strategy_name: m.strategy_name ?? "",
+          context_quality:
+            m.context_quality === "rich" || m.context_quality === "thin"
+              ? m.context_quality
+              : null,
+          input_tokens: m.input_tokens ?? null,
+          output_tokens: m.output_tokens ?? null,
+          system_prompt: m.system_prompt ?? null,
+          user_prompt: m.user_prompt ?? "",
+          raw_response: m.raw_response ?? null,
+        });
+      } else {
+        setData(await api.draftPrompt(draftId));
+      }
       setOpen(true);
     } catch {
-      show({ ok: false, message: "Couldn't load the prompt for this draft." });
+      show({ ok: false, message: "Couldn't load the prompt for this message." });
     } finally {
       setLoading(false);
     }
@@ -238,10 +269,12 @@ export function PromptInspector({ draftId }: { draftId: string }) {
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line bg-surface-2/50 px-5 py-2.5 text-xs text-muted">
                   <code className="rounded bg-surface px-1.5 py-0.5">{data.model}</code>
                   <span>{data.strategy_name}</span>
-                  <span>
-                    {data.input_tokens?.toLocaleString()} in /{" "}
-                    {data.output_tokens?.toLocaleString()} out
-                  </span>
+                  {data.input_tokens !== null && (
+                    <span>
+                      {data.input_tokens?.toLocaleString()} in /{" "}
+                      {data.output_tokens?.toLocaleString()} out
+                    </span>
+                  )}
                   <ContextBadge quality={data.context_quality} />
                 </div>
 

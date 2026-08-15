@@ -9,12 +9,15 @@ from app.core.db import get_db
 from app.models import (
     DraftStatus,
     EmailDraft,
+    EnrollmentState,
     Prospect,
     ProspectEvent,
     ProspectEventType,
     ProspectStatus,
+    SequenceEnrollment,
     Strategy,
 )
+from app.schemas.automation import BulkHandoffRequest
 from app.schemas.prospects import (
     ArchiveRequest,
     BulkArchiveRequest,
@@ -322,6 +325,72 @@ def bulk_archive(payload: BulkArchiveRequest, db: Session = Depends(get_db)):
         _set_archived(db, prospect, payload.archived, payload.reason)
     db.commit()
     return {"updated": len(rows), "archived": payload.archived}
+
+
+# ---------- Pipeline handoff ----------
+
+
+def _open_enrollment_count(db: Session, prospect_id: uuid.UUID) -> int:
+    return (
+        db.scalar(
+            select(func.count(SequenceEnrollment.id)).where(
+                SequenceEnrollment.prospect_id == prospect_id,
+                SequenceEnrollment.state.in_(
+                    (EnrollmentState.active, EnrollmentState.paused)
+                ),
+            )
+        )
+        or 0
+    )
+
+
+def _set_pipeline_mode(db: Session, prospect: Prospect, mode: str) -> bool:
+    """Flip which side of the app owns the prospect. Returns True on change."""
+    if prospect.pipeline_mode == mode:
+        return False
+    prospect.pipeline_mode = mode
+    if mode == "automated":
+        _log(db, prospect.id, ProspectEventType.handed_off, "Handed off to automation")
+    else:
+        _log(db, prospect.id, ProspectEventType.returned_to_manual, "Returned to manual outreach")
+    return True
+
+
+@router.post("/{prospect_id}/handoff", response_model=ProspectOut)
+def handoff_prospect(prospect_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Move a prospect to the automated pipeline. Enrolling is a separate,
+    deliberate step -- handoff alone sends nothing."""
+    prospect = _get(db, prospect_id)
+    _set_pipeline_mode(db, prospect, "automated")
+    db.commit()
+    db.refresh(prospect)
+    return _serialize(prospect)
+
+
+@router.post("/{prospect_id}/return-to-manual", response_model=ProspectOut)
+def return_prospect_to_manual(prospect_id: uuid.UUID, db: Session = Depends(get_db)):
+    prospect = _get(db, prospect_id)
+    open_count = _open_enrollment_count(db, prospect.id)
+    if open_count:
+        # Returning while enrolled would leave a sequence firing at a prospect
+        # the user believes they now handle by hand.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"This prospect has {open_count} open enrollment(s). "
+            "Stop them on the Sequences page first, then return to manual.",
+        )
+    _set_pipeline_mode(db, prospect, "manual")
+    db.commit()
+    db.refresh(prospect)
+    return _serialize(prospect)
+
+
+@router.post("/bulk-handoff")
+def bulk_handoff(payload: BulkHandoffRequest, db: Session = Depends(get_db)):
+    rows = db.scalars(select(Prospect).where(Prospect.id.in_(payload.ids))).all()
+    changed = sum(1 for p in rows if _set_pipeline_mode(db, p, "automated"))
+    db.commit()
+    return {"updated": changed, "total": len(rows)}
 
 
 # ---------- Import ----------

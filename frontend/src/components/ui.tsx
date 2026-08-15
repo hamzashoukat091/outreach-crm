@@ -1,38 +1,4 @@
 import type { ReactNode } from "react";
-import type { EnrollmentStatus, LeadStatus, SendStatus } from "@/lib/types";
-
-const STATUS_TONE: Record<string, string> = {
-  new: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  contacted: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  replied: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-  qualified: "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
-  won: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  lost: "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
-  unsubscribed: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  active: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  paused: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-  completed: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  stopped: "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
-  scheduled: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  sent: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  failed: "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
-  canceled: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-};
-
-export function StatusBadge({
-  status,
-}: {
-  status: LeadStatus | EnrollmentStatus | SendStatus | string;
-}) {
-  const tone = STATUS_TONE[status] ?? STATUS_TONE.new;
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${tone}`}
-    >
-      {status.replace("_", " ")}
-    </span>
-  );
-}
 
 export function Tag({ children }: { children: ReactNode }) {
   return (

@@ -1,127 +1,278 @@
-export type LeadStatus =
-  | "new"
-  | "contacted"
-  | "replied"
-  | "qualified"
-  | "won"
-  | "lost"
-  | "unsubscribed";
+import type { ReplySituation } from "./prospect-types";
 
-export type EnrollmentStatus = "active" | "paused" | "completed" | "stopped";
-export type SendStatus = "scheduled" | "sent" | "failed" | "canceled";
-
-export type ActivityType =
-  | "created"
-  | "status_changed"
-  | "note"
-  | "email_sent"
-  | "email_failed"
-  | "enrolled"
-  | "unenrolled"
-  | "replied";
-
-export interface Lead {
-  id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  full_name: string;
-  company: string | null;
-  title: string | null;
-  phone: string | null;
-  website: string | null;
-  source: string | null;
-  status: LeadStatus;
-  tags: string[];
-  custom_fields: Record<string, unknown>;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface LeadList {
-  items: Lead[];
-  total: number;
-  page: number;
-  page_size: number;
-}
+// ---------- Sequences ----------
 
 export interface SequenceStep {
   id: string;
-  step_order: number;
-  delay_days: number;
-  subject: string;
-  body: string;
+  sequence_id: string;
+  position: number;
+  wait_days: number;
+  /** "HH:MM:SS" or null. */
+  send_at_time: string | null;
+  strategy_id: string | null;
+  strategy_name: string | null;
+  step_instructions: string | null;
+  is_active: boolean;
+  created_at: string;
 }
 
-export interface Sequence {
+export interface AutomationSequence {
   id: string;
   name: string;
   description: string | null;
   is_active: boolean;
   created_at: string;
+  updated_at: string;
   steps: SequenceStep[];
+  step_count: number;
   active_enrollments: number;
+  total_enrollments: number;
+  replied_enrollments: number;
 }
 
-export interface ScheduledSend {
-  id: string;
-  step_id: string;
-  step_order: number | null;
-  scheduled_for: string;
-  status: SendStatus;
-  rendered_subject: string | null;
-  sent_at: string | null;
-  error: string | null;
+export type EnrollMode = "send_now" | "draft_now_send_later" | "send_at";
+
+export interface EnrollResultItem {
+  prospect_id: string;
+  email: string | null;
+  status: "enrolled" | "skipped";
+  reason: string | null;
+  enrollment_id: string | null;
 }
 
-export interface Enrollment {
-  id: string;
-  lead_id: string;
-  sequence_id: string;
-  status: EnrollmentStatus;
-  current_step: number;
-  enrolled_at: string;
-  sequence_name: string | null;
-  lead_email: string | null;
-  sends: ScheduledSend[];
-}
-
-export interface Activity {
-  id: string;
-  lead_id: string;
-  type: ActivityType;
-  summary: string;
-  detail: Record<string, unknown>;
-  created_at: string;
-}
-
-export interface DashboardStats {
-  total_leads: number;
-  pipeline: { status: LeadStatus; count: number }[];
-  active_enrollments: number;
-  sends_last_7_days: number;
-  sends_scheduled: number;
-  reply_rate: number;
-  upcoming: {
-    id: string;
-    lead_email: string;
-    lead_name: string;
-    sequence_name: string;
-    subject: string;
-    scheduled_for: string;
-  }[];
-}
-
-export interface ImportResult {
-  created: number;
-  updated: number;
-  skipped: number;
-  errors: string[];
-}
-
-export interface EnrollResult {
+export interface EnrollResponse {
   enrolled: number;
   skipped: number;
-  reasons: Record<string, string>;
+  results: EnrollResultItem[];
+}
+
+// ---------- Enrollments ----------
+
+export type EnrollmentState =
+  | "active"
+  | "paused"
+  | "replied"
+  | "stopped"
+  | "bounced"
+  | "completed";
+
+/** Flat row from GET /api/automation/enrollments (prospect fields joined in). */
+export interface EnrollmentRow {
+  id: string;
+  prospect_id: string;
+  sequence_id: string;
+  state: EnrollmentState;
+  current_position: number;
+  thread_subject: string | null;
+  enrolled_at: string;
+  ended_at: string | null;
+  end_reason: string | null;
+  last_activity_at: string | null;
+  prospect_name: string | null;
+  prospect_email: string | null;
+  sequence_name: string | null;
+  total_steps: number;
+  next_message_at: string | null;
+}
+
+export interface EnrollmentDetail extends EnrollmentRow {
+  messages: AutomationMessage[];
+}
+
+// ---------- Messages ----------
+
+export type MessageDirection = "outbound" | "inbound";
+
+/** Backend MessageOut. The detail endpoint returns the same shape. */
+export interface AutomationMessage {
+  id: string;
+  prospect_id: string;
+  enrollment_id: string | null;
+  step_id: string | null;
+  direction: MessageDirection;
+  /** "opener" | "follow_up" | "reply" | "incoming" */
+  kind: string;
+  /** "drafting" | "scheduled" | "needs_approval" | "sending" | "sent" | "failed" | "cancelled" | "received" */
+  state: string;
+  subject: string | null;
+  body: string | null;
+  from_address: string | null;
+  to_address: string | null;
+  scheduled_for: string | null;
+  sent_at: string | null;
+  received_at: string | null;
+  attempts: number;
+  error: string | null;
+  simulated: boolean;
+  situation: ReplySituation | null;
+  classification_confidence: number | null;
+  classification_reason: string | null;
+  escalated: boolean;
+  escalation_reason: string | null;
+  approved_at: string | null;
+  edited: boolean;
+  model: string | null;
+  strategy_name: string | null;
+  context_quality: string | null;
+  created_at: string;
+  // Joined for list views.
+  prospect_name: string | null;
+  prospect_email: string | null;
+}
+
+/** Single-message view: adds the exact strings sent to the model. */
+export interface AutomationMessageDetail extends AutomationMessage {
+  system_prompt: string | null;
+  user_prompt: string | null;
+  raw_response: string | null;
+  context_used: Record<string, unknown> | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+}
+
+
+export interface MessageList {
+  items: AutomationMessage[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+// ---------- Inbox ----------
+
+export interface InboxItem {
+  enrollment_id: string;
+  prospect_id: string;
+  prospect_name: string | null;
+  prospect_email: string | null;
+  sequence_name: string | null;
+  state: EnrollmentState;
+  situation: ReplySituation | null;
+  pending_approval: boolean;
+  latest_inbound: AutomationMessage | null;
+  latest_outbound: AutomationMessage | null;
+  last_activity_at: string | null;
+}
+
+// ---------- Approvals ----------
+
+export interface ApprovalItem {
+  /** The held outbound message awaiting review. */
+  message: AutomationMessage;
+  /** The inbound email this reply answers, if any. */
+  trigger: AutomationMessage | null;
+}
+
+// ---------- Settings ----------
+
+export type SettingsSection = "safety" | "schedule" | "limits" | "replies";
+
+export interface AutomationSettings {
+  id: string;
+  // Safety
+  dry_run: boolean;
+  sending_paused: boolean;
+  // Schedule — times come back as "HH:MM:SS" strings.
+  send_window_start: string;
+  send_window_end: string;
+  /** ISO weekday numbers: 1 = Monday … 7 = Sunday. */
+  send_days: number[];
+  timezone: string;
+  default_delay_days: number;
+  default_send_time: string;
+  // Limits
+  hourly_send_limit: number;
+  daily_send_limit: number;
+  // Replies
+  auto_reply_enabled: boolean;
+  min_confidence_to_send: number;
+  always_review_first_reply: boolean;
+  escalate_situations: ReplySituation[];
+  // Outbound email (SMTP) — passwords never come back, only these flags.
+  smtp_host: string | null;
+  smtp_port: number | null;
+  smtp_username: string | null;
+  smtp_use_tls: boolean;
+  from_address: string | null;
+  from_name: string | null;
+  reply_to: string | null;
+  // Inbound email (IMAP)
+  imap_host: string | null;
+  imap_port: number | null;
+  imap_username: string | null;
+  imap_use_ssl: boolean;
+  imap_folder: string;
+  imap_poll_seconds: number;
+  has_smtp_password: boolean;
+  has_imap_password: boolean;
+  updated_at: string;
+}
+
+export interface SenderFacts {
+  id: string;
+  rates: string | null;
+  availability: string | null;
+  tech_stack: string | null;
+  process: string | null;
+  booking_link: string | null;
+  portfolio_link: string | null;
+  do_not_answer: string | null;
+  extra_facts: string | null;
+  is_configured: boolean;
+  updated_at: string;
+}
+
+/** The editable slice of SenderFacts. */
+export type SenderFactField =
+  | "rates"
+  | "availability"
+  | "tech_stack"
+  | "process"
+  | "booking_link"
+  | "portfolio_link"
+  | "do_not_answer"
+  | "extra_facts";
+
+// ---------- Analytics + status ----------
+
+export interface StepDropoff {
+  position: number;
+  sent: number;
+  replies_after: number;
+}
+
+export interface SequenceAnalyticsRow {
+  sequence_id: string;
+  name: string;
+  enrolled: number;
+  active: number;
+  completed: number;
+  replied: number;
+  reply_rate: number;
+  steps: StepDropoff[];
+}
+
+/** Flat — no "totals" wrapper. */
+export interface AutomationAnalytics {
+  active_enrollments: number;
+  total_sent: number;
+  replies_received: number;
+  reply_rate: number;
+  pending_approvals: number;
+  sends_today: number;
+  daily_send_limit: number;
+  sequences: SequenceAnalyticsRow[];
+}
+
+export interface AutomationStatus {
+  dry_run: boolean;
+  sending_paused: boolean;
+  window_open: boolean;
+  sends_this_hour: number;
+  hourly_send_limit: number;
+  sends_today: number;
+  daily_send_limit: number;
+  next_scheduled_at: string | null;
+  worker_heartbeat_at: string | null;
+  worker_alive: boolean;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { ActionState } from "@/app/actions";
+import type { ActionState } from "@/app/prospect-actions";
 
 export function useToast(timeoutMs = 4000) {
   const [toast, setToast] = useState<ActionState | null>(null);

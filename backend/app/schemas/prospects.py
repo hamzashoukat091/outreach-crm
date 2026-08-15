@@ -86,6 +86,7 @@ class ProspectOut(ORMModel, ProspectBase):
     full_name: str
     display_company: str
     status: ProspectStatus
+    pipeline_mode: str = "manual"
     is_complete: bool
     missing_fields: list[str]
     company_inferred: bool
@@ -127,6 +128,9 @@ class ProspectImportResult(BaseModel):
 class StrategyBase(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = None
+    kind: str = Field(default="opener", pattern="^(opener|reply)$")
+    reply_situation: str | None = None
+    priority: int = Field(default=100, ge=0, le=10000)
     system_prompt: str = Field(min_length=1)
     instructions: str = Field(min_length=1)
     tone: str | None = None
@@ -143,6 +147,9 @@ class StrategyCreate(StrategyBase):
 class StrategyUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
+    kind: str | None = Field(default=None, pattern="^(opener|reply)$")
+    reply_situation: str | None = None
+    priority: int | None = Field(default=None, ge=0, le=10000)
     system_prompt: str | None = None
     instructions: str | None = None
     tone: str | None = None

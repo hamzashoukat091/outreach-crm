@@ -4,8 +4,8 @@ import "./globals.css";
 import { NavLinks } from "@/components/nav-links";
 
 export const metadata: Metadata = {
-  title: "Outreach — Lead CRM",
-  description: "Cold-outreach lead CRM with email sequencing.",
+  title: "Outreach — Cold outreach CRM",
+  description: "Cold-outreach CRM with AI drafting and automated sequences.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -25,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 >
                   Outreach
                 </Link>
-                <p className="text-xs text-muted">Lead CRM</p>
+                <p className="text-xs text-muted">Outreach CRM</p>
               </div>
             </div>
             <NavLinks />

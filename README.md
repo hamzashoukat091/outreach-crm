@@ -1,7 +1,10 @@
-# Outreach — Cold-Outreach Lead CRM
+# Outreach — Cold-Outreach CRM
 
-Prospect CRM with AI-drafted emails you review, copy, and send by hand — plus an
-optional automated sequencing engine. FastAPI + Postgres + Next.js 15, all in Docker.
+One prospect list, two pipelines. **Outreach**: AI-drafted emails you review,
+copy, and send by hand. **Sequences**: full automation — Claude drafts every
+step, sends on a schedule, reads the replies, classifies them, and answers them,
+holding anything risky for your approval. FastAPI + Postgres + Next.js 15, all
+in Docker.
 
 ## Quick start
 
@@ -22,7 +25,8 @@ ANTHROPIC_API_KEY=sk-ant-...
 | Mailpit (captured email) | http://localhost:8025 |
 | Postgres | localhost:5433 |
 
-The database migrates and seeds three starter strategies on first boot.
+The database migrates and seeds twelve starter strategies on first boot — six
+openers and six reply strategies, one per reply situation.
 
 ## The main workflow
 
@@ -95,77 +99,81 @@ nothing. Set `MAIL_DRIVER=smtp` and compose routes mail to Mailpit, where you ca
 :8025 — still nothing leaves your machine. Point `SMTP_HOST` at a real relay only when you
 mean it.
 
-## Automated sequences (separate, optional)
+## Sequences — full automation
 
-The original sequencing engine is untouched and lives under **Sequences** in the
-nav — multi-step templates with day offsets, a background worker, and a send queue.
-It is independent of the prospect/AI flow above: prospects are never enrolled
-automatically, and nothing there sends without you enrolling a Lead yourself.
+Every prospect has a **pipeline mode**: `manual` (the Outreach flow above) or
+`automated`. **Hand off to automation** from the prospect page or the bulk bar;
+return to manual any time no enrollment is open. One record, one timeline —
+nothing is copied or lost moving between the two.
 
-Mail from that engine defaults to `MAIL_DRIVER=console`, which logs and delivers
-nothing. Setting `smtp` routes to Mailpit on :8025 — still nothing leaves the machine.
+There are no templates. A sequence step is just *wait N days + a strategy*, and
+Claude writes each email at send time with the whole thread as context, so a
+follow-up never repeats the opener or re-introduces you.
 
-1. **Leads** → select a few → pick a sequence → **Enroll**.
-2. **Dashboard** or **Send queue** → **Run sender now** (forces a tick instead of waiting for
-   the worker's 15s interval).
-3. On that lead, log activity as **They replied** → the sequence stops and its queued emails
-   are canceled.
+The loop, end to end:
+
+1. **Sequences** → build steps → **Enroll prospects**. Timing per enrollment:
+   draft now and send later (default: next day at your configured time), send at
+   the next opportunity, or a specific date and time.
+2. The worker drafts, waits for the send window, and sends — threading each
+   message under the opener with real `In-Reply-To`/`References` headers.
+3. Replies are read back in (Mailpit's API locally; IMAP when you configure your
+   mailbox), matched to their thread, and **classified**: interested, question,
+   objection, not now, referral, not interested, unsubscribe, auto-reply, unclear.
+4. A reply cancels the remaining steps. Unsubscribes go to a **suppression list**
+   keyed on the email address, which survives re-imports and re-enrollment.
+   Bounces suppress too.
+5. Claude drafts an answer using a **reply strategy** for that situation — and it
+   may state only what you wrote in **Sender facts** (rates, availability, stack,
+   topics it must never answer). A reply that needs anything else is **held**.
+6. Held replies land in **Approvals** with the triggering email and the reason.
+   Approve, edit, or reject; fill in the missing fact and **Regenerate** to get a
+   grounded answer. Questions, objections, low-confidence classifications, and
+   the first-ever reply to each prospect are always held.
+
+**Safety.** Dry-run ships ON: everything runs — drafting, scheduling, state —
+but nothing is delivered until you flip it off in Settings. A pause button halts
+sending independently. Sends respect a configurable window (default Mon–Fri
+09:00–17:00, any timezone), an hourly cap (20) and a daily cap (100), checked
+against the suppression list immediately before the socket opens.
+
+**Settings** is the control panel for all of it — schedule, limits, reply
+behaviour, SMTP/IMAP transport — each section with its own save and
+reset-to-defaults. Leave the transport empty and mail stays in Mailpit.
 
 ## Architecture
 
 ```
 web (Next.js) → api (FastAPI) → db (Postgres)
-                worker (loop) ↗
+                worker (loop) ↗   ↘ mailpit (SMTP out + inbox poll)
 ```
 
 Five services: `db`, `api`, `worker`, `web`, `mailpit`.
 
-**Enrollment materializes the plan.** Enrolling a lead writes one `scheduled_sends` row per
-step, dated from each step's `delay_days`. The whole plan is therefore visible and cancellable
-in the UI *before* anything goes out, and the worker's job reduces to "claim what's due"
-rather than recomputing offsets every tick.
+**Enrollment materializes the plan.** Enrolling writes the first `messages` row;
+each send schedules the next step. The plan is visible and cancellable in the UI
+before anything goes out, and the worker's job reduces to "claim what's due"
+with `SELECT ... FOR UPDATE SKIP LOCKED` — scaling to replicas needs no code change.
 
-**The worker is a plain loop**, not a broker — the right size for an MVP. It claims due rows
-with `SELECT ... FOR UPDATE SKIP LOCKED`, so scaling to multiple replicas needs no code change.
-
-**Halting is enforced in the engine, not the UI.** A lead who replied, won, lost, or
-unsubscribed is dropped from every active sequence, and each due send re-checks lead status
-immediately before sending. A prospect who answers between scheduling and send time will not
+**Halting is enforced in the engine, not the UI.** Stop rules run on ingest, and
+every due send re-checks suppression, pause, and window immediately before
+sending. A prospect who answers between scheduling and send time will not
 receive the next step.
-
-**Guardrails.** `DAILY_SEND_CAP` (default 200) bounds sends per day; `SEND_BATCH_SIZE` bounds
-each tick. A failed send is recorded on the row with its error and never silently retried.
 
 ## Data model
 
-Prospect / AI side:
-
 | Table | Purpose |
 |---|---|
-| `prospects` | the enrichment export, with `is_complete` + `missing_fields` |
-| `strategies` | editable generation prompts |
-| `email_drafts` | generated emails, their provenance, and approval state |
-| `prospect_events` | append-only timeline per prospect |
-
-Sequencing side:
-
-| Table | Purpose |
-|---|---|
-| `leads` | contact + status + `tags`/`custom_fields` (JSONB) |
-| `sequences` / `sequence_steps` | ordered templates, `delay_days` per step |
-| `enrollments` | a lead's run through a sequence |
-| `scheduled_sends` | one row per step; stores the rendered copy that was sent |
-| `activities` | append-only timeline per lead |
-
-`prospects` is deliberately separate from `leads`: it mirrors the vendor's column
-set and its sparsity instead of forcing that shape onto the sequencing model.
-
-## Sequence templates (sequencing engine only)
-
-Sequence steps support `{{merge_field}}`: `first_name`, `last_name`, `full_name`,
-`company`, `title`, `phone`, `website`, `source`, plus any unrecognized CSV column
-as `{{custom.industry}}`. Blank fields render as empty text rather than failing the
-send, and the rendered copy is stored on the send row.
+| `prospects` | the enrichment export, with `is_complete`, `missing_fields`, `pipeline_mode` |
+| `strategies` | editable prompts; `kind` opener \| reply, `reply_situation`, `priority` |
+| `email_drafts` | manual-side generated emails, their provenance and approval state |
+| `prospect_events` | append-only timeline per prospect, both pipelines |
+| `sequences` / `sequence_steps` | ordered steps: `wait_days`, time of day, strategy |
+| `sequence_enrollments` | a prospect's run; a partial unique index blocks double-runs |
+| `messages` | every automated email in or out: RFC headers, state, full prompt provenance |
+| `suppressions` | never-contact list keyed on email, survives re-import |
+| `sender_facts` | the only facts Claude may state when answering questions |
+| `automation_settings` | the control panel row: window, limits, transport, dry-run |
 
 ## Tests
 
@@ -173,14 +181,20 @@ send, and the rendered copy is stored on the send row.
 docker compose exec api python -m pytest tests/ -q
 ```
 
-40 tests, no API key or network required:
+104 tests, no API key or network required (model calls are monkeypatched):
 
 - **CSV parsing** — sparse rows, domain recovery, bracket scalars, malformed JSON,
   unmapped columns, bad emails.
 - **Prompt building** — rich vs. thin classification, the inferred-company warning,
   intent ranking, guardrails always appended, response parsing.
-- **Sequencing** — delay offsets, duplicate-enrollment refusal, the reply/opt-out
-  halt, the daily cap, enrollment completion.
+- **Sequencing** — scheduling and window clamping, duplicate-enrollment refusal,
+  stop rules, cross-enrollment unsubscribe, bounce suppression, completion.
+- **Replies** — every escalation gate, the facts fence and its ESCALATE hatch,
+  redraft-in-place, auto-reply and unsubscribe handling, window-ignore for replies.
+- **Inbox** — dedupe by RFC id, header matching, address fallback, bounce
+  detection, stranger mail ignored.
+- **Handoff + archive** — mode flips, blocked return while enrolled, status
+  preserved through archive/restore.
 
 ## Configuration
 
@@ -188,8 +202,8 @@ docker compose exec api python -m pytest tests/ -q
 |---|---|---|
 | `ANTHROPIC_API_KEY` | *(empty)* | Required for generation; the rest of the app works without it |
 | `ANTHROPIC_MODEL` | `claude-sonnet-5` | |
-| `MAIL_DRIVER` | `console` | `console` \| `smtp` — sequencing engine only |
-| `SEED_ON_START` | `true` | Demo *leads*; strategies always seed (idempotent) |
+| `MAIL_DRIVER` | `console` | Fallback transport when Settings has no SMTP host |
+| `SEED_ON_START` | `true` | Strategies seed idempotently on boot |
 | `API_PORT` / `WEB_PORT` / `POSTGRES_PORT` | `8000` / `3000` / `5433` | |
 
 `.env` is gitignored. Keep your API key there, never in `docker-compose.yml`.
@@ -198,8 +212,9 @@ docker compose exec api python -m pytest tests/ -q
 
 **No auth — the API is unauthenticated, so don't expose it publicly as-is.**
 
-Also absent: open/click tracking, inbox sync (replies are logged by hand, which is
-the tradeoff of manual sending), per-user ownership, A/B testing of strategies on
-the same prospect, and automatic company enrichment for the thin rows. Bulk
+Also absent: open/click tracking, per-user ownership, A/B testing of strategies
+on the same prospect, and automatic company enrichment for the thin rows. Bulk
 generation is capped at 25 per batch and runs synchronously — fine at this list
 size, but it would want a job queue before it scales much past a few hundred.
+On the automated side: no DKIM/SPF checking (that lives with your mail
+provider), and classification costs one model call per inbound email.

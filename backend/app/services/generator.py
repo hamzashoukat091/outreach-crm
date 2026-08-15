@@ -229,6 +229,54 @@ def build_prompt(
     return system, "\n".join(parts)
 
 
+def call_claude(system: str, user_message: str, max_tokens: int = 1200) -> dict[str, Any]:
+    """One Claude call with the shared error mapping.
+
+    Every Anthropic call in the app -- manual drafts, sequence steps, reply
+    drafting, reply classification -- goes through here so a change to the
+    error handling (or the client construction) happens in exactly one place.
+
+    Returns {text, input_tokens, output_tokens, stop_reason, model}.
+    Raises GenerationError with a message safe to surface to the user.
+    """
+    if not settings.anthropic_api_key:
+        raise GenerationError(
+            "No ANTHROPIC_API_KEY configured. Add it to .env and restart the api service."
+        )
+
+    client = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=90.0)
+
+    try:
+        response = client.messages.create(
+            model=settings.anthropic_model,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": user_message}],
+        )
+    except anthropic.AuthenticationError as exc:
+        raise GenerationError("Anthropic rejected the API key. Check ANTHROPIC_API_KEY.") from exc
+    except anthropic.RateLimitError as exc:
+        raise GenerationError("Rate limited by Anthropic. Wait a moment and retry.") from exc
+    except anthropic.APIStatusError as exc:
+        raise GenerationError(f"Anthropic API error ({exc.status_code}).") from exc
+    except anthropic.APIConnectionError as exc:
+        raise GenerationError("Could not reach the Anthropic API. Check connectivity.") from exc
+    except Exception as exc:  # noqa: BLE001
+        raise GenerationError(f"Generation failed: {exc}") from exc
+
+    text = "".join(block.text for block in response.content if block.type == "text")
+    if not text.strip():
+        raise GenerationError("The model returned an empty response.")
+
+    return {
+        "text": text,
+        "input_tokens": response.usage.input_tokens,
+        "output_tokens": response.usage.output_tokens,
+        "stop_reason": response.stop_reason,
+        "model": settings.anthropic_model,
+    }
+
+
 def _parse_response(text: str) -> tuple[str, str]:
     """Split the SUBJECT/BODY response, tolerating small format drift."""
     subject = ""
@@ -258,44 +306,18 @@ def generate_email(
     prospect: Prospect, strategy: Strategy, sender: "SenderProfile | None" = None
 ) -> dict[str, Any]:
     """Call Claude and return the draft fields. Raises GenerationError."""
-    if not settings.anthropic_api_key:
-        raise GenerationError(
-            "No ANTHROPIC_API_KEY configured. Add it to .env and restart the api service."
-        )
-
     system, user_message = build_prompt(prospect, strategy, sender)
     _context, quality, used = build_context(prospect)
 
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=90.0)
-
-    try:
-        response = client.messages.create(
-            model=settings.anthropic_model,
-            # Derived from the strategy's own limit rather than fixed: a 220-word
-            # strategy overran a flat 1200 and got cut off mid-sentence. ~2 tokens
-            # per word, doubled for the model's preamble and reasoning slack.
-            max_tokens=max(1200, strategy.max_words * 8),
-            system=system,
-            messages=[{"role": "user", "content": user_message}],
-        )
-    except anthropic.AuthenticationError as exc:
-        raise GenerationError("Anthropic rejected the API key. Check ANTHROPIC_API_KEY.") from exc
-    except anthropic.RateLimitError as exc:
-        raise GenerationError("Rate limited by Anthropic. Wait a moment and retry.") from exc
-    except anthropic.APIStatusError as exc:
-        raise GenerationError(f"Anthropic API error ({exc.status_code}).") from exc
-    except anthropic.APIConnectionError as exc:
-        raise GenerationError("Could not reach the Anthropic API. Check connectivity.") from exc
-    except Exception as exc:  # noqa: BLE001
-        raise GenerationError(f"Generation failed: {exc}") from exc
-
-    text = "".join(block.text for block in response.content if block.type == "text")
-    if not text.strip():
-        raise GenerationError("The model returned an empty response.")
+    # Max tokens derived from the strategy's own limit rather than fixed: a
+    # 220-word strategy overran a flat 1200 and got cut off mid-sentence. ~2
+    # tokens per word, doubled for the model's preamble and reasoning slack.
+    result = call_claude(system, user_message, max_tokens=max(1200, strategy.max_words * 8))
+    text = result["text"]
 
     # Hitting the token ceiling yields an email cut off mid-sentence. Fail loudly
     # rather than storing half a draft that looks complete in the UI.
-    if response.stop_reason == "max_tokens":
+    if result["stop_reason"] == "max_tokens":
         raise GenerationError(
             "The model ran out of room before finishing. Lower the strategy's "
             "word limit and try again."
@@ -306,7 +328,7 @@ def generate_email(
     return {
         "subject": subject,
         "body": body,
-        "model": settings.anthropic_model,
+        "model": result["model"],
         "context_quality": quality,
         "context_used": used,
         # Persisted so the draft can show exactly what was sent and returned,
@@ -314,6 +336,6 @@ def generate_email(
         "system_prompt": system,
         "user_prompt": user_message,
         "raw_response": text,
-        "input_tokens": response.usage.input_tokens,
-        "output_tokens": response.usage.output_tokens,
+        "input_tokens": result["input_tokens"],
+        "output_tokens": result["output_tokens"],
     }

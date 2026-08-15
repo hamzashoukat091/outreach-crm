@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { api } from "@/lib/api";
 import { NewStrategyButton, StrategyCard } from "@/components/strategy-editor";
 import { SenderProfileEditor } from "@/components/sender-profile-editor";
@@ -5,7 +6,14 @@ import { EmptyState, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
-export default async function StrategiesPage() {
+export default async function StrategiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ kind?: string }>;
+}) {
+  const params = await searchParams;
+  const replyView = params.kind === "reply";
+
   let strategies;
   let health;
   let sender;
@@ -26,13 +34,37 @@ export default async function StrategiesPage() {
     );
   }
 
+  const visible = strategies.filter((s) =>
+    replyView ? s.kind === "reply" : s.kind !== "reply",
+  );
+
   return (
     <>
       <PageHeader
         title="Strategies"
-        description="Your prompts. Each one defines how an email gets written."
-        action={strategies.length > 0 ? <NewStrategyButton /> : undefined}
+        description={
+          replyView
+            ? "How automated replies get written, per situation."
+            : "Your prompts. Each one defines how an email gets written."
+        }
+        action={
+          visible.length > 0 ? (
+            <NewStrategyButton kind={replyView ? "reply" : "opener"} />
+          ) : undefined
+        }
       />
+
+      <div className="mb-4 flex gap-2">
+        <Link href="/strategies" className={replyView ? "btn-secondary" : "btn-primary"}>
+          Openers
+        </Link>
+        <Link
+          href="/strategies?kind=reply"
+          className={replyView ? "btn-primary" : "btn-secondary"}
+        >
+          Reply strategies
+        </Link>
+      </div>
 
       {!health.ai_configured && (
         <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm dark:border-amber-800 dark:bg-amber-950">
@@ -52,21 +84,35 @@ export default async function StrategiesPage() {
         </p>
       )}
 
-      <div className="mb-6">
-        <SenderProfileEditor profile={sender} />
-      </div>
+      {!replyView && (
+        <div className="mb-6">
+          <SenderProfileEditor profile={sender} />
+        </div>
+      )}
 
-      {strategies.length === 0 ? (
+      {replyView && (
+        <p className="mb-4 text-xs text-muted">
+          When an inbound reply is classified as a situation, the matching
+          strategy with the lowest priority number writes the response.
+          Unsubscribes, auto-replies, and unclear messages are handled for you.
+        </p>
+      )}
+
+      {visible.length === 0 ? (
         <div className="card">
           <EmptyState
-            title="No strategies yet"
-            description="A strategy holds the prompt and structure for a type of email. Create one to start generating."
-            action={<NewStrategyButton />}
+            title={replyView ? "No reply strategies yet" : "No strategies yet"}
+            description={
+              replyView
+                ? "A reply strategy tells the engine how to answer one kind of reply — interested, question, objection, and so on."
+                : "A strategy holds the prompt and structure for a type of email. Create one to start generating."
+            }
+            action={<NewStrategyButton kind={replyView ? "reply" : "opener"} />}
           />
         </div>
       ) : (
         <div className="space-y-4">
-          {strategies.map((strategy) => (
+          {visible.map((strategy) => (
             <StrategyCard key={strategy.id} strategy={strategy} />
           ))}
         </div>

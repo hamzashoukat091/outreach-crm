@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { api } from "@/lib/api";
+import { AutomationConversation } from "@/components/automation-conversation";
+import { PipelineModeBadge } from "@/components/automation-ui";
 import { DraftCard } from "@/components/draft-card";
 import { ProspectPanel } from "@/components/prospect-panel";
 import {
@@ -36,17 +38,31 @@ export default async function ProspectDetailPage({
   let events;
   let strategies;
   let health;
+  let automationMessages;
+  let enrollments;
   try {
-    [prospect, drafts, events, strategies, health] = await Promise.all([
-      api.getProspect(id),
-      api.prospectDrafts(id),
-      api.prospectEvents(id),
-      api.listStrategies(),
-      api.health().catch(() => ({ ai_configured: false, status: "", model: "" })),
-    ]);
+    [prospect, drafts, events, strategies, health, automationMessages, enrollments] =
+      await Promise.all([
+        api.getProspect(id),
+        api.prospectDrafts(id),
+        api.prospectEvents(id),
+        api.listStrategies(),
+        api.health().catch(() => ({ ai_configured: false, status: "", model: "" })),
+        api
+          .listAutomationMessages({ prospect_id: id })
+          .then((page) => page.items)
+          .catch(() => []),
+        api.listAutomationEnrollments().catch(() => []),
+      ]);
   } catch {
     notFound();
   }
+
+  // "Open" = the sequence would still send; return-to-manual is blocked then.
+  const hasOpenEnrollment = enrollments.some(
+    (row) =>
+      row.prospect_id === id && (row.state === "active" || row.state === "paused"),
+  );
 
   const liveDrafts = drafts.filter((d) => d.status !== "discarded");
 
@@ -82,6 +98,7 @@ export default async function ProspectDetailPage({
             {prospect.full_name}
           </h1>
           <ProspectStatusBadge status={prospect.status} />
+          <PipelineModeBadge mode={prospect.pipeline_mode} />
         </div>
         <p className="mt-1 text-sm text-muted">
           {[prospect.job_title, prospect.display_company].filter(Boolean).join(" · ")}
@@ -196,6 +213,10 @@ export default async function ProspectDetailPage({
             )}
           </section>
 
+          {automationMessages.length > 0 && (
+            <AutomationConversation messages={automationMessages} />
+          )}
+
           <section>
             <h2 className="mb-3 text-sm font-semibold text-ink">
               Drafts {liveDrafts.length > 0 && `(${liveDrafts.length})`}
@@ -250,8 +271,9 @@ export default async function ProspectDetailPage({
         <div className="lg:col-span-1">
           <ProspectPanel
             prospect={prospect}
-            strategies={strategies.filter((s) => s.is_active)}
+            strategies={strategies.filter((s) => s.is_active && s.kind !== "reply")}
             aiConfigured={health.ai_configured}
+            hasOpenEnrollment={hasOpenEnrollment}
           />
         </div>
       </div>
