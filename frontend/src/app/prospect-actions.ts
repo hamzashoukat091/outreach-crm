@@ -169,6 +169,45 @@ export async function bulkDeleteProspectsAction(ids: string[]): Promise<ActionSt
   }
 }
 
+export async function archiveProspectAction(
+  id: string,
+  archived: boolean,
+  reason?: string,
+): Promise<ActionState> {
+  try {
+    if (archived) await api.archiveProspect(id, reason);
+    else await api.unarchiveProspect(id);
+  } catch (error) {
+    return fail(error);
+  }
+
+  refreshProspect(id);
+  return {
+    ok: true,
+    message: archived ? "Archived." : "Restored to your active list.",
+  };
+}
+
+export async function bulkArchiveAction(
+  ids: string[],
+  archived: boolean,
+): Promise<ActionState> {
+  if (!ids.length) return { ok: false, message: "Select at least one prospect." };
+
+  try {
+    const result = await api.bulkArchiveProspects(ids, archived);
+    refreshProspect();
+    return {
+      ok: true,
+      message: archived
+        ? `Archived ${result.updated} prospect(s).`
+        : `Restored ${result.updated} prospect(s).`,
+    };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
 export async function logProspectEventAction(
   id: string,
   _prev: ActionState | null,

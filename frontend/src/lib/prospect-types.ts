@@ -55,6 +55,9 @@ export interface Prospect {
   is_complete: boolean;
   missing_fields: string[];
   company_inferred: boolean;
+  is_archived: boolean;
+  archived_at: string | null;
+  archive_reason: string | null;
   intent_topics: IntentTopic[];
   skills: string[];
   interests: string[];

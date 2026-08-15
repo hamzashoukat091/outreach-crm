@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { bulkDeleteProspectsAction, generateBulkAction } from "@/app/prospect-actions";
+import {
+  bulkArchiveAction,
+  bulkDeleteProspectsAction,
+  generateBulkAction,
+} from "@/app/prospect-actions";
 import type { Prospect, Strategy } from "@/lib/prospect-types";
 import { EmptyState, Tag } from "@/components/ui";
 import { ProspectStatusBadge } from "@/components/prospect-ui";
@@ -12,9 +16,11 @@ import { Toast, useToast } from "@/components/toast";
 export function ProspectsTable({
   prospects,
   strategies,
+  archivedView = false,
 }: {
   prospects: Prospect[];
   strategies: Strategy[];
+  archivedView?: boolean;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [strategyId, setStrategyId] = useState("");
@@ -50,6 +56,24 @@ export function ProspectsTable({
     });
   }
 
+  function archive(archived: boolean) {
+    if (archived && !window.confirm(
+      `Archive ${selected.size} prospect(s)? They'll be hidden from this list ` +
+      `and excluded from analytics. Nothing is deleted.`,
+    )) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await bulkArchiveAction([...selected], archived);
+      show(result);
+      if (result.ok) {
+        setSelected(new Set());
+        router.refresh();
+      }
+    });
+  }
+
   function remove() {
     if (
       !window.confirm(
@@ -73,8 +97,12 @@ export function ProspectsTable({
     return (
       <div className="card">
         <EmptyState
-          title="No prospects match"
-          description="Clear the filters, or import a CSV to get started."
+          title={archivedView ? "Nothing archived" : "No prospects match"}
+          description={
+            archivedView
+              ? "Prospects you archive are kept here, out of your active list and analytics."
+              : "Clear the filters, or import a CSV to get started."
+          }
         />
       </div>
     );
@@ -89,7 +117,7 @@ export function ProspectsTable({
           <select
             value={strategyId}
             onChange={(e) => setStrategyId(e.target.value)}
-            className="input h-9 w-auto min-w-52 py-0"
+            className={`input h-9 w-auto min-w-52 py-0 ${archivedView ? "hidden" : ""}`}
             disabled={strategies.length === 0}
           >
             {strategies.length === 0 ? (
@@ -104,14 +132,33 @@ export function ProspectsTable({
             )}
           </select>
 
-          <button
-            onClick={generate}
-            disabled={pending || strategies.length === 0 || selected.size > 25}
-            className="btn-primary h-9"
-            title={selected.size > 25 ? "Generate at most 25 at a time" : undefined}
-          >
-            {pending ? "Generating…" : `Generate ${selected.size} email(s)`}
-          </button>
+          {archivedView ? (
+            <button
+              onClick={() => archive(false)}
+              disabled={pending}
+              className="btn-primary h-9"
+            >
+              {pending ? "Restoring…" : `Restore ${selected.size}`}
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={generate}
+                disabled={pending || strategies.length === 0 || selected.size > 25}
+                className="btn-primary h-9"
+                title={selected.size > 25 ? "Generate at most 25 at a time" : undefined}
+              >
+                {pending ? "Generating…" : `Generate ${selected.size} email(s)`}
+              </button>
+              <button
+                onClick={() => archive(true)}
+                disabled={pending}
+                className="btn-secondary h-9"
+              >
+                Archive
+              </button>
+            </>
+          )}
 
           <button onClick={remove} disabled={pending} className="btn-ghost h-9 text-rose-600">
             Delete

@@ -46,6 +46,8 @@ class ProspectEventType(str, enum.Enum):
     bounced = "bounced"
     status_changed = "status_changed"
     note = "note"
+    archived = "archived"
+    unarchived = "unarchived"
 
 
 class Prospect(Base):
@@ -114,6 +116,15 @@ class Prospect(Base):
     is_complete: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     missing_fields: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     company_inferred: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Archiving is deliberately a flag, not a status: setting status='archived'
+    # would erase whether they replied or bounced. A shelved prospect keeps its
+    # real outcome and can be restored to exactly where it was.
+    is_archived: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, index=True
+    )
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    archive_reason: Mapped[str | None] = mapped_column(String(300))
 
     tags: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)

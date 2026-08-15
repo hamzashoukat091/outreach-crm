@@ -159,6 +159,7 @@ export const api = {
       industry?: string;
       completeness?: string;
       has_draft?: boolean;
+      archived?: boolean;
       page?: number;
       page_size?: number;
     } = {},
@@ -184,6 +185,21 @@ export const api = {
 
   deleteProspect: (id: string) =>
     request<void>(`/api/prospects/${id}`, { method: "DELETE" }),
+
+  archiveProspect: (id: string, reason?: string) =>
+    request<Prospect>(`/api/prospects/${id}/archive`, {
+      method: "POST",
+      body: JSON.stringify({ reason: reason ?? null }),
+    }),
+
+  unarchiveProspect: (id: string) =>
+    request<Prospect>(`/api/prospects/${id}/unarchive`, { method: "POST" }),
+
+  bulkArchiveProspects: (ids: string[], archived: boolean, reason?: string) =>
+    request<{ updated: number; archived: boolean }>("/api/prospects/bulk-archive", {
+      method: "POST",
+      body: JSON.stringify({ prospect_ids: ids, archived, reason: reason ?? null }),
+    }),
 
   bulkDeleteProspects: (ids: string[]) =>
     request<{ deleted: number }>("/api/prospects/bulk-delete", {

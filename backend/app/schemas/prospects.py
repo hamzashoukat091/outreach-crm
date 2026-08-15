@@ -71,6 +71,16 @@ class ProspectUpdate(BaseModel):
     notes: str | None = None
 
 
+class ArchiveRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=300)
+
+
+class BulkArchiveRequest(BaseModel):
+    prospect_ids: list[uuid.UUID] = Field(min_length=1)
+    archived: bool = True
+    reason: str | None = Field(default=None, max_length=300)
+
+
 class ProspectOut(ORMModel, ProspectBase):
     id: uuid.UUID
     full_name: str
@@ -79,6 +89,9 @@ class ProspectOut(ORMModel, ProspectBase):
     is_complete: bool
     missing_fields: list[str]
     company_inferred: bool
+    is_archived: bool = False
+    archived_at: datetime | None = None
+    archive_reason: str | None = None
     email_status: str | None = None
     naics: str | None = None
     intent_topics: list[Any] = Field(default_factory=list)

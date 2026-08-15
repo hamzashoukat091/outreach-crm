@@ -17,11 +17,13 @@ export default async function ProspectsPage({
     status?: string;
     seniority?: string;
     completeness?: string;
+    view?: string;
     page?: string;
   }>;
 }) {
   const params = await searchParams;
   const page = Number(params.page ?? "1") || 1;
+  const archivedView = params.view === "archived";
 
   let data;
   let strategies;
@@ -33,6 +35,7 @@ export default async function ProspectsPage({
         status: params.status,
         seniority: params.seniority,
         completeness: params.completeness,
+        archived: archivedView,
         page,
         page_size: PAGE_SIZE,
       }),
@@ -68,10 +71,26 @@ export default async function ProspectsPage({
     <>
       <PageHeader
         title="Prospects"
-        description={`${data.total} prospect${data.total === 1 ? "" : "s"}. Select rows to generate emails.`}
+        description={
+          archivedView
+            ? `${data.total} archived. Hidden from your active list and analytics.`
+            : `${data.total} prospect${data.total === 1 ? "" : "s"}. Select rows to generate emails.`
+        }
       />
 
-      {incomplete > 0 && !params.completeness && (
+      <div className="mb-4 flex gap-2">
+        <Link href="/prospects" className={archivedView ? "btn-secondary" : "btn-primary"}>
+          Active
+        </Link>
+        <Link
+          href="/prospects?view=archived"
+          className={archivedView ? "btn-primary" : "btn-secondary"}
+        >
+          Archived
+        </Link>
+      </div>
+
+      {incomplete > 0 && !params.completeness && !archivedView && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm dark:border-amber-800 dark:bg-amber-950">
           <p className="text-amber-900 dark:text-amber-200">
             <strong>{incomplete}</strong> prospect{incomplete === 1 ? " has" : "s have"} no
@@ -86,7 +105,7 @@ export default async function ProspectsPage({
         </div>
       )}
 
-      {strategies.length === 0 && (
+      {strategies.length === 0 && !archivedView && (
         <div className="mb-4 rounded-lg border border-line bg-surface-2 px-4 py-3 text-sm">
           No strategies yet.{" "}
           <Link href="/strategies" className="text-accent hover:underline">
@@ -96,11 +115,17 @@ export default async function ProspectsPage({
         </div>
       )}
 
-      <Suspense fallback={null}>
-        <ProspectToolbar seniorities={seniorities} />
-      </Suspense>
+      {!archivedView && (
+        <Suspense fallback={null}>
+          <ProspectToolbar seniorities={seniorities} />
+        </Suspense>
+      )}
 
-      <ProspectsTable prospects={data.items} strategies={activeStrategies} />
+      <ProspectsTable
+        prospects={data.items}
+        strategies={activeStrategies}
+        archivedView={archivedView}
+      />
 
       {totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between text-sm">

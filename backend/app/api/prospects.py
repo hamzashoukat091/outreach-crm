@@ -16,6 +16,8 @@ from app.models import (
     Strategy,
 )
 from app.schemas.prospects import (
+    ArchiveRequest,
+    BulkArchiveRequest,
     BulkGenerateRequest,
     BulkGenerateResult,
     DraftOut,
@@ -100,10 +102,17 @@ def list_prospects(
     industry: str | None = None,
     completeness: str | None = Query(None, pattern="^(complete|incomplete)$"),
     has_draft: bool | None = None,
+    archived: bool = Query(
+        False, description="Show archived prospects instead of active ones"
+    ),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=200),
 ):
-    stmt = select(Prospect).options(selectinload(Prospect.drafts))
+    # Archived prospects are hidden unless explicitly asked for -- that is the
+    # point of archiving.
+    stmt = select(Prospect).options(selectinload(Prospect.drafts)).where(
+        Prospect.is_archived.is_(archived)
+    )
 
     if q:
         pattern = f"%{q.lower()}%"
@@ -253,6 +262,66 @@ def bulk_delete(ids: list[uuid.UUID], db: Session = Depends(get_db)):
         db.delete(prospect)
     db.commit()
     return {"deleted": len(rows)}
+
+
+# ---------- Archive ----------
+
+
+def _set_archived(
+    db: Session, prospect: Prospect, archived: bool, reason: str | None = None
+) -> None:
+    """Shelve or restore a prospect. Status is untouched, so a prospect who
+    replied is still 'replied' when they come back."""
+    if prospect.is_archived == archived:
+        return
+
+    prospect.is_archived = archived
+    prospect.archived_at = datetime.now(timezone.utc) if archived else None
+    prospect.archive_reason = reason if archived else None
+
+    if archived:
+        _log(
+            db,
+            prospect.id,
+            ProspectEventType.archived,
+            f"Archived{f': {reason}' if reason else ''}",
+            {"reason": reason},
+        )
+    else:
+        _log(db, prospect.id, ProspectEventType.unarchived, "Restored from archive")
+
+
+@router.post("/{prospect_id}/archive", response_model=ProspectOut)
+def archive_prospect(
+    prospect_id: uuid.UUID,
+    payload: ArchiveRequest | None = None,
+    db: Session = Depends(get_db),
+):
+    prospect = _get(db, prospect_id)
+    _set_archived(db, prospect, True, payload.reason if payload else None)
+    db.commit()
+    db.refresh(prospect)
+    return _serialize(prospect)
+
+
+@router.post("/{prospect_id}/unarchive", response_model=ProspectOut)
+def unarchive_prospect(prospect_id: uuid.UUID, db: Session = Depends(get_db)):
+    prospect = _get(db, prospect_id)
+    _set_archived(db, prospect, False)
+    db.commit()
+    db.refresh(prospect)
+    return _serialize(prospect)
+
+
+@router.post("/bulk-archive")
+def bulk_archive(payload: BulkArchiveRequest, db: Session = Depends(get_db)):
+    rows = db.scalars(
+        select(Prospect).where(Prospect.id.in_(payload.prospect_ids))
+    ).all()
+    for prospect in rows:
+        _set_archived(db, prospect, payload.archived, payload.reason)
+    db.commit()
+    return {"updated": len(rows), "archived": payload.archived}
 
 
 # ---------- Import ----------

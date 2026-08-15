@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import {
+  archiveProspectAction,
   deleteProspectAction,
   generateAction,
   logProspectEventAction,
@@ -12,6 +13,8 @@ import {
 import type { Prospect, ProspectStatus, Strategy } from "@/lib/prospect-types";
 import { Toast, useToast } from "@/components/toast";
 
+// 'archived' is not a status here -- use the Archive button, which preserves
+// whatever real outcome the prospect already had.
 const STATUSES: ProspectStatus[] = [
   "new",
   "drafted",
@@ -20,7 +23,6 @@ const STATUSES: ProspectStatus[] = [
   "bounced",
   "not_interested",
   "won",
-  "archived",
 ];
 
 const STATUS_LABEL: Record<string, string> = {
@@ -96,6 +98,29 @@ export function ProspectPanel({
     });
   }
 
+  function toggleArchive() {
+    if (prospect.is_archived) {
+      startTransition(async () => {
+        show(await archiveProspectAction(prospect.id, false));
+        router.refresh();
+      });
+      return;
+    }
+
+    const reason = window.prompt(
+      "Archive this prospect? They'll be hidden from your list and excluded " +
+        "from analytics, but nothing is deleted.\n\nReason (optional):",
+      "",
+    );
+    // prompt() returns null when cancelled; empty string is a valid "no reason".
+    if (reason === null) return;
+
+    startTransition(async () => {
+      show(await archiveProspectAction(prospect.id, true, reason || undefined));
+      router.refresh();
+    });
+  }
+
   function remove() {
     if (
       !window.confirm(
@@ -143,14 +168,18 @@ export function ProspectPanel({
 
           <button
             onClick={generate}
-            disabled={pending || !aiConfigured || strategies.length === 0}
+            disabled={
+              pending || !aiConfigured || strategies.length === 0 || prospect.is_archived
+            }
             className="btn-primary mt-3 w-full"
           >
             {pending ? "Generating…" : "Generate draft"}
           </button>
 
           <p className="mt-2 text-xs text-muted">
-            {prospect.is_complete
+            {prospect.is_archived
+              ? "Archived — restore this prospect to generate emails."
+              : prospect.is_complete
               ? "Full company context available."
               : "Limited context — the email will rely on the job title."}
           </p>
@@ -253,10 +282,19 @@ export function ProspectPanel({
             </div>
           </form>
 
+          {/* Archive is the reversible option, so it sits above delete. */}
+          <button
+            onClick={toggleArchive}
+            disabled={pending}
+            className="btn-secondary mt-5 w-full"
+          >
+            {prospect.is_archived ? "Restore to active list" : "Archive prospect"}
+          </button>
+
           <button
             onClick={remove}
             disabled={pending}
-            className="btn-ghost mt-5 w-full text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
+            className="btn-ghost mt-2 w-full text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
           >
             Delete prospect
           </button>

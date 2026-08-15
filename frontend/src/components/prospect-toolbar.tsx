@@ -5,6 +5,8 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { createProspectAction, importProspectsAction } from "@/app/prospect-actions";
 import { Toast, useToast } from "@/components/toast";
 
+// 'archived' is deliberately absent: archiving is a separate flag with its own
+// tab, so offering it as a status filter would match nothing.
 const STATUSES = [
   "new",
   "drafted",
@@ -13,7 +15,6 @@ const STATUSES = [
   "bounced",
   "not_interested",
   "won",
-  "archived",
 ];
 
 const STATUS_LABEL: Record<string, string> = {

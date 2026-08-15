@@ -28,6 +28,10 @@ def engine():
     admin.dispose()
 
     eng = create_engine(TEST_DB_URL)
+    # Rebuild from current metadata every run. create_all() alone only adds
+    # missing tables, so a new column on an existing table would be silently
+    # absent and every test touching it would fail on a stale schema.
+    Base.metadata.drop_all(eng)
     Base.metadata.create_all(eng)
     yield eng
     eng.dispose()

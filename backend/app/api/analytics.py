@@ -26,7 +26,7 @@ POSITIVE = (ProspectStatus.replied, ProspectStatus.won)
 def _top(db: Session, column, limit: int = 8) -> list[NamedCount]:
     rows = db.execute(
         select(column, func.count(Prospect.id))
-        .where(column.isnot(None), column != "")
+        .where(column.isnot(None), column != "", Prospect.is_archived.is_(False))
         .group_by(column)
         .order_by(func.count(Prospect.id).desc())
         .limit(limit)
@@ -36,14 +36,23 @@ def _top(db: Session, column, limit: int = 8) -> list[NamedCount]:
 
 @router.get("", response_model=ProspectAnalytics)
 def get_analytics(days: int = Query(30, ge=7, le=180), db: Session = Depends(get_db)):
-    total = db.scalar(select(func.count(Prospect.id))) or 0
+    # Archived prospects are excluded everywhere: an archive that still skews
+    # the numbers is not an archive.
+    active = Prospect.is_archived.is_(False)
+
+    total = db.scalar(select(func.count(Prospect.id)).where(active)) or 0
     complete = (
-        db.scalar(select(func.count(Prospect.id)).where(Prospect.is_complete.is_(True))) or 0
+        db.scalar(
+            select(func.count(Prospect.id)).where(active, Prospect.is_complete.is_(True))
+        )
+        or 0
     )
     incomplete = total - complete
 
     status_rows = db.execute(
-        select(Prospect.status, func.count(Prospect.id)).group_by(Prospect.status)
+        select(Prospect.status, func.count(Prospect.id))
+        .where(active)
+        .group_by(Prospect.status)
     ).all()
     status_counts = {r[0]: r[1] for r in status_rows}
     by_status = [
@@ -63,7 +72,7 @@ def get_analytics(days: int = Query(30, ge=7, le=180), db: Session = Depends(get
         select(topic_text.label("topic"), func.count().label("n"))
         .select_from(Prospect)
         .join(topic_element, sa_true())
-        .where(func.jsonb_array_length(Prospect.intent_topics) > 0)
+        .where(func.jsonb_array_length(Prospect.intent_topics) > 0, active)
         .group_by(topic_text)
         .order_by(func.count().desc())
         .limit(8)
