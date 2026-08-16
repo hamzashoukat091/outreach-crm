@@ -68,6 +68,14 @@ export function EnrollPanel({
     });
   }
 
+  // Prospects already marked for automation. They are the ones most likely to
+  // be enrolled next, so they sort to the top of the list.
+  const waiting = prospects.filter((p) => p.pipeline_mode === "automated");
+  const ordered = [
+    ...waiting,
+    ...prospects.filter((p) => p.pipeline_mode !== "automated"),
+  ];
+
   // When the first email actually leaves, under each option. Computed rather
   // than described, because "uses your configured delay" told you nothing
   // about which day that lands on.
@@ -169,7 +177,7 @@ export function EnrollPanel({
         <p className="mt-1 text-xs text-muted">
           {total === null
             ? "Loading eligible prospects…"
-            : `${total} eligible prospect${total === 1 ? "" : "s"}. Enrolling hands them off to automation.`}
+            : `${total} to choose from. Enrolling starts the sequence and moves them to automation — you don't need to hand them off first.`}
         </p>
 
         {!hasSteps && (
@@ -190,13 +198,33 @@ export function EnrollPanel({
           className="input mt-3"
         />
 
+        {/* Handing a prospect off marks them for automation but schedules
+            nothing. Without this they sit invisibly between the two sections,
+            waiting for an enrollment nobody knows to create. */}
+        {waiting.length > 0 && (
+          <button
+            onClick={() =>
+              setSelected((prev) => {
+                const next = new Set(prev);
+                waiting.forEach((p) => next.add(p.id));
+                return next;
+              })
+            }
+            className="mt-2 w-full rounded-lg border border-accent/30 bg-accent-soft px-3 py-2 text-left text-xs text-ink hover:bg-accent-soft/70"
+          >
+            <strong>{waiting.length}</strong> prospect
+            {waiting.length === 1 ? " is" : "s are"} handed off but not enrolled
+            anywhere — select {waiting.length === 1 ? "it" : "them"}
+          </button>
+        )}
+
         <div className="mt-3 max-h-64 divide-y divide-line overflow-y-auto rounded-lg border border-line">
           {loading && prospects.length === 0 ? (
             <p className="px-3 py-4 text-sm text-muted">Loading…</p>
           ) : prospects.length === 0 ? (
             <p className="px-3 py-4 text-sm text-muted">No prospects match.</p>
           ) : (
-            prospects.map((prospect) => (
+            ordered.map((prospect) => (
               <label
                 key={prospect.id}
                 className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-surface-2"

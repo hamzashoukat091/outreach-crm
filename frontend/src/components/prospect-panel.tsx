@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import {
@@ -164,10 +165,25 @@ export function ProspectPanel({
             <PipelineModeBadge mode={prospect.pipeline_mode} />
           </div>
           <p className="mt-2 text-xs text-muted">
-            {automated
-              ? "The automation engine drafts, sends, and follows up for this prospect."
-              : "You write and send emails for this prospect by hand."}
+            {!automated
+              ? "You write and send emails for this prospect by hand."
+              : hasOpenEnrollment
+              ? "A sequence is running. The engine drafts, sends, and follows up until they reply."
+              : // Handing off only changes who sends. Nothing is scheduled until
+                // the prospect is enrolled, and saying otherwise sends people
+                // looking for a sequence that was never started.
+                "Marked for automation, but not enrolled in a sequence yet — nothing is scheduled."}
           </p>
+
+          {automated && !hasOpenEnrollment && (
+            <Link
+              href="/sequences"
+              className="btn-primary mt-3 flex w-full items-center justify-center"
+            >
+              Enroll in a sequence
+            </Link>
+          )}
+
           <button
             onClick={togglePipeline}
             disabled={pending || prospect.is_archived || (automated && hasOpenEnrollment)}
@@ -176,10 +192,18 @@ export function ProspectPanel({
                 ? "Stop their open enrollment first — a sequence is still running."
                 : undefined
             }
-            className="btn-secondary mt-3 w-full"
+            className={`${
+              automated && !hasOpenEnrollment ? "btn-ghost" : "btn-secondary"
+            } mt-2 w-full`}
           >
             {automated ? "Return to manual" : "Hand off to automation"}
           </button>
+
+          {!automated && (
+            <p className="mt-2 text-xs text-muted">
+              Handing off only changes who sends. You pick the sequence next.
+            </p>
+          )}
           {automated && hasOpenEnrollment && (
             <p className="mt-2 text-xs text-muted">
               A sequence is still running. Stop the enrollment before returning
