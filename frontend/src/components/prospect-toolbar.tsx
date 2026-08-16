@@ -73,7 +73,10 @@ export function ProspectToolbar({
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      {/* One row: search takes the slack, filters stay as narrow as their
+          content, and the actions ride along instead of claiming a second
+          row of vertical space. */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <input
           type="search"
           placeholder="Search name, email, company, or title…"
@@ -83,13 +86,13 @@ export function ProspectToolbar({
             clearTimeout((window as any).__prospectSearch);
             (window as any).__prospectSearch = setTimeout(() => setParam("q", value), 350);
           }}
-          className="input max-w-xs"
+          className="input h-9 w-full min-w-44 max-w-xs flex-1 py-0 sm:w-auto"
         />
 
         <select
           defaultValue={params.get("status") ?? ""}
           onChange={(e) => setParam("status", e.target.value)}
-          className="input h-[38px] w-auto py-0"
+          className="input h-9 w-auto py-0 text-sm"
         >
           <option value="">All statuses</option>
           {STATUSES.map((s) => (
@@ -99,21 +102,31 @@ export function ProspectToolbar({
           ))}
         </select>
 
-        <select
-          defaultValue={params.get("completeness") ?? ""}
-          onChange={(e) => setParam("completeness", e.target.value)}
-          className="input h-[38px] w-auto py-0"
+        {/* A toggle, not a third select: "show me the thin ones" is the only
+            question anyone actually asks of this field, and the 3-option
+            version cost 172px to say it. */}
+        <button
+          onClick={() =>
+            setParam(
+              "completeness",
+              params.get("completeness") === "incomplete" ? "" : "incomplete",
+            )
+          }
+          className={`h-9 shrink-0 rounded-lg border px-3 text-sm transition-colors ${
+            params.get("completeness") === "incomplete"
+              ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              : "border-line text-muted hover:bg-surface-2 hover:text-ink"
+          }`}
+          title="Show only prospects missing company info"
         >
-          <option value="">All data</option>
-          <option value="complete">Has company info</option>
-          <option value="incomplete">Missing company info</option>
-        </select>
+          Needs info
+        </button>
 
         {categories.length > 0 && (
           <select
             defaultValue={params.get("category") ?? ""}
             onChange={(e) => setParam("category", e.target.value)}
-            className="input h-[38px] w-auto py-0"
+            className="input h-9 w-auto py-0 text-sm"
           >
             <option value="">All categories</option>
             {categories.map((c) => (
@@ -128,7 +141,7 @@ export function ProspectToolbar({
           <select
             defaultValue={params.get("seniority") ?? ""}
             onChange={(e) => setParam("seniority", e.target.value)}
-            className="input h-[38px] w-auto py-0"
+            className="input h-9 w-auto py-0 text-sm"
           >
             <option value="">All seniority</option>
             {seniorities.map((s) => (
@@ -139,8 +152,8 @@ export function ProspectToolbar({
           </select>
         )}
 
-        <div className="ml-auto flex items-center gap-2">
-          <label className="btn-secondary cursor-pointer">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <label className="btn-secondary h-9 cursor-pointer">
             Import CSV
             <input
               type="file"
@@ -153,7 +166,10 @@ export function ProspectToolbar({
               }}
             />
           </label>
-          <button onClick={() => setShowAdd((v) => !v)} className="btn-primary">
+          <button
+            onClick={() => setShowAdd((v) => !v)}
+            className="btn-primary h-9"
+          >
             {showAdd ? "Cancel" : "Add prospect"}
           </button>
         </div>

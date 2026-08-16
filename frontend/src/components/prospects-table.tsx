@@ -249,9 +249,11 @@ export function ProspectsTable({
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-line bg-surface-2/60">
+            {/* Sticky: scanning row 40 is useless if the column labels
+                scrolled away at row 10. */}
+            <thead className="sticky top-0 z-10 border-b border-line bg-surface-2 backdrop-blur">
               <tr className="text-left text-xs uppercase tracking-wide text-muted">
-                <th className="w-10 px-4 py-3">
+                <th className="w-10 px-4 py-2.5">
                   <input
                     type="checkbox"
                     checked={allSelected}
@@ -262,11 +264,11 @@ export function ProspectsTable({
                     className="h-4 w-4 rounded border-line accent-[rgb(var(--accent))]"
                   />
                 </th>
-                <th className="px-4 py-3 font-medium">Prospect</th>
-                <th className="px-4 py-3 font-medium">Company</th>
-                <th className="hidden px-4 py-3 font-medium lg:table-cell">Intent</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Pipeline</th>
+                <th className="px-4 py-2.5 font-medium">Prospect</th>
+                <th className="px-4 py-2.5 font-medium">Company</th>
+                <th className="hidden px-4 py-2.5 font-medium lg:table-cell">Intent</th>
+                <th className="px-4 py-2.5 font-medium">Status</th>
+                <th className="px-4 py-2.5 font-medium">Pipeline</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -286,7 +288,7 @@ export function ProspectsTable({
                   }`}
                 >
                   <td
-                    className={`px-4 py-3 ${
+                    className={`px-4 py-2.5 ${
                       running
                         ? "border-l-2 border-accent bg-accent-soft/20"
                         : "border-l-2 border-transparent"
@@ -301,46 +303,49 @@ export function ProspectsTable({
                     />
                   </td>
 
-                  <td className="px-4 py-3">
+                  <td className="max-w-64 px-4 py-2.5">
                     <Link
                       href={`/prospects/${prospect.id}`}
-                      className="font-medium text-ink hover:text-accent"
+                      className="block truncate font-medium text-ink hover:text-accent"
                     >
                       {prospect.full_name}
                     </Link>
-                    <p className="text-xs text-muted">{prospect.email}</p>
+                    <p className="truncate text-xs text-muted">{prospect.email}</p>
                     {prospect.job_title && (
-                      <p className="mt-0.5 text-xs text-muted">{prospect.job_title}</p>
+                      <p className="truncate text-xs text-muted" title={prospect.job_title}>
+                        {prospect.job_title}
+                      </p>
                     )}
                   </td>
 
-                  <td className="px-4 py-3">
+                  <td className="max-w-72 px-4 py-2.5">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-ink">{prospect.display_company}</span>
+                      <span className="truncate text-ink">{prospect.display_company}</span>
                       {prospect.company_inferred && (
                         <span
                           title="Company name derived from the email domain — not verified"
-                          className="text-xs text-amber-600"
+                          className="shrink-0 text-xs text-amber-600"
                         >
                           ~
                         </span>
                       )}
                     </div>
-                    {prospect.industry ? (
-                      <p className="text-xs text-muted">{prospect.industry}</p>
-                    ) : (
-                      <p className="text-xs text-amber-600">Needs company info</p>
-                    )}
-                    {/* Which sourcing run they came from -- the answer to
-                        "why is this person in my CRM?". */}
-                    {prospect.category && (
-                      <span className="mt-1 inline-flex rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted">
-                        {prospect.category}
-                      </span>
-                    )}
+                    {/* Category rides on the industry line rather than as its
+                        own badge: filtered to one vertical it would repeat on
+                        every row, which is noise, not information. */}
+                    <p className="truncate text-xs">
+                      {prospect.industry ? (
+                        <span className="text-muted">{prospect.industry}</span>
+                      ) : (
+                        <span className="text-amber-600">Needs company info</span>
+                      )}
+                      {prospect.category && (
+                        <span className="text-muted/70"> · {prospect.category}</span>
+                      )}
+                    </p>
                   </td>
 
-                  <td className="hidden max-w-56 px-4 py-3 lg:table-cell">
+                  <td className="hidden max-w-56 px-4 py-2.5 lg:table-cell">
                     {prospect.top_intent ? (
                       <span className="text-xs text-muted" title={prospect.top_intent}>
                         {prospect.top_intent.split(":").pop()?.trim()}
@@ -350,7 +355,7 @@ export function ProspectsTable({
                     )}
                   </td>
 
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-2.5">
                     <ProspectStatusBadge status={prospect.status} />
                   </td>
 
@@ -358,7 +363,7 @@ export function ProspectsTable({
                       someone stopped and returned to manual still has a
                       finished enrollment attached, and rendering that would
                       claim a sequence owns a prospect you took back. */}
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-2.5">
                     {prospect.pipeline_mode !== "automated" ? (
                       prospect.draft_count > 0 ? (
                         <Tag>
