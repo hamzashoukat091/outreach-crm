@@ -6,14 +6,13 @@ import type { AutomationSequence } from "@/lib/types";
 import { SequenceList } from "@/components/sequence-list";
 import { TemplatePicker } from "@/components/template-picker";
 
-/** Tabs and the create button share one row.
+/** Two ways to make a sequence, so two buttons.
  *
- *  "New sequence" previously sat alone on its own right-aligned row between
- *  the tabs and the first card, spending a full row of vertical space to
- *  hold one button. It belongs with the other navigation. */
+ *  Templates is the primary action -- picking a proven shape beats assembling
+ *  four steps and remembering which strategy belongs where -- but it is a
+ *  different intent from "give me an empty one", and burying the blank form
+ *  inside the template picker made the rarer path invisible. */
 export function SequencesPanel({ sequences }: { sequences: AutomationSequence[] }) {
-  // Templates first, blank second: assembling steps by hand is the rarer
-  // case, and it is one click away from here.
   const [mode, setMode] = useState<"idle" | "templates" | "blank">("idle");
 
   return (
@@ -26,20 +25,25 @@ export function SequencesPanel({ sequences }: { sequences: AutomationSequence[] 
           Enrollments
         </Link>
 
-        <button
-          onClick={() => setMode(mode === "idle" ? "templates" : "idle")}
-          className="btn-secondary ml-auto h-9"
-        >
-          {mode === "idle" ? "New sequence" : "Cancel"}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setMode(mode === "blank" ? "idle" : "blank")}
+            className="btn-secondary h-9"
+          >
+            {mode === "blank" ? "Cancel" : "New sequence"}
+          </button>
+          <button
+            onClick={() => setMode(mode === "templates" ? "idle" : "templates")}
+            className="btn-primary h-9"
+          >
+            {mode === "templates" ? "Close templates" : "Templates"}
+          </button>
+        </div>
       </div>
 
       {mode === "templates" && (
         <div className="mb-3">
-          <TemplatePicker
-            onBlank={() => setMode("blank")}
-            onClose={() => setMode("idle")}
-          />
+          <TemplatePicker onClose={() => setMode("idle")} />
         </div>
       )}
 

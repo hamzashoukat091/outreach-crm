@@ -9,13 +9,7 @@ import { Toast, useToast } from "@/components/toast";
 
 /** Ready-made shapes, so building a sequence is picking one rather than
  *  assembling steps and remembering which strategy belongs where. */
-export function TemplatePicker({
-  onBlank,
-  onClose,
-}: {
-  onBlank: () => void;
-  onClose: () => void;
-}) {
+export function TemplatePicker({ onClose }: { onClose: () => void }) {
   const [templates, setTemplates] = useState<SequenceTemplate[] | null>(null);
   const [pending, startTransition] = useTransition();
   const [applying, setApplying] = useState<string | null>(null);
@@ -114,14 +108,6 @@ export function TemplatePicker({
             ))}
           </div>
         )}
-
-        <button
-          onClick={onBlank}
-          disabled={pending}
-          className="btn-ghost mt-4 h-8 text-xs"
-        >
-          Or start from an empty sequence →
-        </button>
       </div>
 
       <Toast state={toast} />
