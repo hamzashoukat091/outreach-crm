@@ -68,13 +68,33 @@ export function EnrollPanel({
     });
   }
 
-  // Prospects already marked for automation. They are the ones most likely to
-  // be enrolled next, so they sort to the top of the list.
-  const waiting = prospects.filter((p) => p.pipeline_mode === "automated");
+  // A prospect mid-sequence cannot be enrolled again -- the database enforces
+  // one open enrollment per prospect per sequence, so ticking them here would
+  // only produce a failure at submit time. Disable them instead, and say why.
+  function runningIn(prospect: Prospect): string | null {
+    const open =
+      prospect.enrollment_state === "active" ||
+      prospect.enrollment_state === "paused";
+    return open ? prospect.sequence_name ?? "a sequence" : null;
+  }
+
+  // Handed off to automation but sitting in no sequence. They are the ones
+  // most likely to be enrolled next, so they sort to the top.
+  const waiting = prospects.filter(
+    (p) => p.pipeline_mode === "automated" && !runningIn(p),
+  );
   const ordered = [
     ...waiting,
-    ...prospects.filter((p) => p.pipeline_mode !== "automated"),
+    ...prospects.filter((p) => !waiting.includes(p) && !runningIn(p)),
+    // Already running, so they sink to the bottom rather than disappear --
+    // seeing "already in Standard 3-step" is the answer to "where did they go".
+    ...prospects.filter(runningIn),
   ];
+
+  // Selections can outlive the search that produced them. Never submit an id
+  // that has since started running somewhere.
+  const blocked = new Set(prospects.filter(runningIn).map((p) => p.id));
+  const selectable = [...selected].filter((id) => !blocked.has(id));
 
   // When the first email actually leaves, under each option. Computed rather
   // than described, because "uses your configured delay" told you nothing
@@ -158,7 +178,7 @@ export function EnrollPanel({
     startTransition(async () => {
       const result = await enrollProspectsAction(
         sequenceId,
-        [...selected],
+        selectable,
         mode,
         mode === "send_at" && sendAt ? new Date(sendAt).toISOString() : undefined,
       );
@@ -224,31 +244,50 @@ export function EnrollPanel({
           ) : prospects.length === 0 ? (
             <p className="px-3 py-4 text-sm text-muted">No prospects match.</p>
           ) : (
-            ordered.map((prospect) => (
+            ordered.map((prospect) => {
+              const running = runningIn(prospect);
+              return (
               <label
                 key={prospect.id}
-                className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-surface-2"
+                title={
+                  running
+                    ? `Already enrolled in ${running}. Stop that run first to re-enroll.`
+                    : undefined
+                }
+                className={`flex items-center gap-3 px-3 py-2 ${
+                  running
+                    ? "cursor-not-allowed opacity-55"
+                    : "cursor-pointer hover:bg-surface-2"
+                }`}
               >
                 <input
                   type="checkbox"
-                  checked={selected.has(prospect.id)}
+                  checked={!running && selected.has(prospect.id)}
+                  disabled={!!running}
                   onChange={() => toggle(prospect.id)}
-                  className="h-4 w-4 shrink-0 rounded border-line accent-[rgb(var(--accent))]"
+                  className="h-4 w-4 shrink-0 rounded border-line accent-[rgb(var(--accent))] disabled:cursor-not-allowed"
                 />
                 <span className="min-w-0">
                   <span className="block truncate text-sm text-ink">
                     {prospect.full_name}
-                    {prospect.pipeline_mode === "automated" && (
+                    {!running && prospect.pipeline_mode === "automated" && (
                       <span className="ml-1.5 text-xs text-accent">automated</span>
                     )}
                   </span>
                   <span className="block truncate text-xs text-muted">
-                    {prospect.email}
-                    {prospect.display_company ? ` · ${prospect.display_company}` : ""}
+                    {running ? (
+                      <>Already in {running}</>
+                    ) : (
+                      <>
+                        {prospect.email}
+                        {prospect.display_company ? ` · ${prospect.display_company}` : ""}
+                      </>
+                    )}
                   </span>
                 </span>
               </label>
-            ))
+              );
+            })
           )}
         </div>
         {total !== null && total > prospects.length && (
@@ -297,7 +336,10 @@ export function EnrollPanel({
         {settings && firstSend && (
           <div className="mt-4 rounded-lg border border-line bg-surface-2/50 px-3 py-3">
             <p className="text-xs font-medium text-ink">
-              What happens {selected.size > 0 ? `to ${selected.size} prospect${selected.size === 1 ? "" : "s"}` : "next"}
+              What happens{" "}
+              {selectable.length > 0
+                ? `to ${selectable.length} prospect${selectable.length === 1 ? "" : "s"}`
+                : "next"}
             </p>
             <ol className="mt-2 space-y-1">
               {plan.map((entry) => (
@@ -328,7 +370,7 @@ export function EnrollPanel({
           onClick={enroll}
           disabled={
             pending ||
-            selected.size === 0 ||
+            selectable.length === 0 ||
             !hasSteps ||
             (mode === "send_at" && !sendAt)
           }
@@ -336,7 +378,9 @@ export function EnrollPanel({
         >
           {pending
             ? "Enrolling…"
-            : `Enroll ${selected.size || ""} prospect${selected.size === 1 ? "" : "s"}`}
+            : `Enroll ${selectable.length || ""} prospect${
+                selectable.length === 1 ? "" : "s"
+              }`}
         </button>
       </div>
 
