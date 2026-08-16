@@ -120,7 +120,7 @@ def test_pause_resume_stop_lifecycle(db):
 
     assert pause_enrollment(enrollment.id, db).state == EnrollmentState.paused
     assert resume_enrollment(enrollment.id, db).state == EnrollmentState.active
-    assert stop_enrollment(enrollment.id, db).state == EnrollmentState.stopped
+    assert stop_enrollment(enrollment.id, db=db).state == EnrollmentState.stopped
 
     with pytest.raises(HTTPException):
         resume_enrollment(enrollment.id, db)  # ended is final

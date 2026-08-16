@@ -1,6 +1,7 @@
 """Sequences, steps, and enrollments."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
@@ -12,6 +13,7 @@ from app.models import (
     Message,
     MessageState,
     Prospect,
+    ProspectEventType,
     Sequence,
     SequenceEnrollment,
     SequenceStep,
@@ -32,7 +34,7 @@ from app.schemas.automation import (
     StepReorderRequest,
     StepUpdate,
 )
-from app.services.sequencer import SequencerError, enroll, stop
+from app.services.sequencer import SequencerError, enroll, log_event, stop
 
 router = APIRouter(prefix="/api/automation", tags=["automation"])
 
@@ -372,10 +374,46 @@ def resume_enrollment(enrollment_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/enrollments/{enrollment_id}/stop", response_model=EnrollmentOut)
-def stop_enrollment(enrollment_id: uuid.UUID, db: Session = Depends(get_db)):
+def stop_enrollment(
+    enrollment_id: uuid.UUID,
+    *,
+    # Annotated, not `= Query(False)`: a bare Query default is the marker
+    # object itself when the function is called directly rather than served,
+    # and that object is truthy -- which would silently reclaim the prospect.
+    return_to_manual: Annotated[
+        bool,
+        Query(description="Also hand the prospect back to the Outreach section."),
+    ] = False,
+    db: Session = Depends(get_db),
+):
     enrollment = _get_enrollment(db, enrollment_id)
     if not enrollment.is_open:
         raise HTTPException(status.HTTP_409_CONFLICT, "Enrollment is already ended")
     stop(db, enrollment, "Stopped manually")
+
+    # Ending a run and reclaiming the prospect are separate facts: someone can
+    # be stopped in one sequence and still running in another. Only hand them
+    # back once nothing else is firing at them.
+    if return_to_manual:
+        db.flush()
+        still_open = db.scalar(
+            select(func.count())
+            .select_from(SequenceEnrollment)
+            .where(
+                SequenceEnrollment.prospect_id == enrollment.prospect_id,
+                SequenceEnrollment.state.in_(OPEN_STATES),
+            )
+        )
+        if not still_open:
+            prospect = db.get(Prospect, enrollment.prospect_id)
+            if prospect is not None and prospect.pipeline_mode != "manual":
+                prospect.pipeline_mode = "manual"
+                log_event(
+                    db,
+                    prospect.id,
+                    ProspectEventType.returned_to_manual,
+                    "Returned to manual outreach",
+                )
+
     db.commit()
     return _enrollment_out(db, enrollment)

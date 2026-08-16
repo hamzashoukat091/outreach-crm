@@ -472,6 +472,26 @@ def bulk_handoff(payload: BulkHandoffRequest, db: Session = Depends(get_db)):
     return {"updated": changed, "total": len(rows)}
 
 
+@router.post("/bulk-return-to-manual")
+def bulk_return_to_manual(payload: BulkHandoffRequest, db: Session = Depends(get_db)):
+    """Hand prospects back to the Outreach section.
+
+    Anyone still running in a sequence is skipped rather than failing the whole
+    batch -- selecting 20 people should not be blocked by one of them being
+    mid-flight. The count of skipped rows is returned so the UI can say so.
+    """
+    rows = db.scalars(select(Prospect).where(Prospect.id.in_(payload.ids))).all()
+    changed = 0
+    blocked = 0
+    for prospect in rows:
+        if _open_enrollment_count(db, prospect.id):
+            blocked += 1
+            continue
+        changed += _set_pipeline_mode(db, prospect, "manual")
+    db.commit()
+    return {"updated": changed, "blocked": blocked, "total": len(rows)}
+
+
 # ---------- Import ----------
 
 

@@ -157,6 +157,12 @@ export const api = {
       body: JSON.stringify({ ids }),
     }),
 
+  bulkReturnProspectsToManual: (ids: string[]) =>
+    request<{ updated: number; blocked: number; total: number }>(
+      "/api/prospects/bulk-return-to-manual",
+      { method: "POST", body: JSON.stringify({ ids }) },
+    ),
+
   // ---------- Generation ----------
 
   generate: (prospectId: string, strategyId?: string) =>
@@ -338,8 +344,13 @@ export const api = {
   resumeEnrollment: (id: string) =>
     request<EnrollmentRow>(`/api/automation/enrollments/${id}/resume`, { method: "POST" }),
 
-  stopEnrollment: (id: string) =>
-    request<EnrollmentRow>(`/api/automation/enrollments/${id}/stop`, { method: "POST" }),
+  stopEnrollment: (id: string, returnToManual = false) =>
+    request<EnrollmentRow>(
+      `/api/automation/enrollments/${id}/stop${
+        returnToManual ? "?return_to_manual=true" : ""
+      }`,
+      { method: "POST" },
+    ),
 
   // ---------- Automation: messages ----------
 

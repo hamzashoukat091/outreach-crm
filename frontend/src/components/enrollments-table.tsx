@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import {
   pauseEnrollmentAction,
   resumeEnrollmentAction,
@@ -15,6 +15,7 @@ import { Toast, useToast } from "@/components/toast";
 
 export function EnrollmentsTable({ enrollments }: { enrollments: EnrollmentRow[] }) {
   const [pending, startTransition] = useTransition();
+  const [confirming, setConfirming] = useState<string | null>(null);
   const { toast, show } = useToast();
   const router = useRouter();
 
@@ -41,16 +42,13 @@ export function EnrollmentsTable({ enrollments }: { enrollments: EnrollmentRow[]
     });
   }
 
-  function stop(row: EnrollmentRow) {
-    if (
-      !window.confirm(
-        `Stop ${label(row)}'s enrollment? This ends the sequence for them — it can't be resumed.`,
-      )
-    ) {
-      return;
-    }
+  // Stopping has two useful endings -- park them in automation, or hand them
+  // back to the Outreach section -- so this asks rather than assuming. A
+  // confirm() dialog only offers yes/no, hence the inline row.
+  function stop(row: EnrollmentRow, returnToManual: boolean) {
+    setConfirming(null);
     startTransition(async () => {
-      const result = await stopEnrollmentAction(row.id);
+      const result = await stopEnrollmentAction(row.id, returnToManual);
       show(result);
       if (result.ok) router.refresh();
     });
@@ -87,7 +85,8 @@ export function EnrollmentsTable({ enrollments }: { enrollments: EnrollmentRow[]
             </thead>
             <tbody className="divide-y divide-line">
               {enrollments.map((row) => (
-                <tr key={row.id} className="transition-colors hover:bg-surface-2/50">
+                <Fragment key={row.id}>
+                <tr className="transition-colors hover:bg-surface-2/50">
                   <td className="px-4 py-3">
                     <Link
                       href={`/prospects/${row.prospect_id}`}
@@ -132,7 +131,9 @@ export function EnrollmentsTable({ enrollments }: { enrollments: EnrollmentRow[]
                       )}
                       {(row.state === "active" || row.state === "paused") && (
                         <button
-                          onClick={() => stop(row)}
+                          onClick={() =>
+                            setConfirming(confirming === row.id ? null : row.id)
+                          }
                           disabled={pending}
                           className="btn-ghost h-8 text-xs text-rose-600"
                         >
@@ -142,6 +143,45 @@ export function EnrollmentsTable({ enrollments }: { enrollments: EnrollmentRow[]
                     </div>
                   </td>
                 </tr>
+
+                {confirming === row.id && (
+                  <tr className="bg-surface-2/60">
+                    <td colSpan={7} className="px-4 py-3">
+                      <p className="text-xs text-muted">
+                        Ending the sequence for{" "}
+                        <span className="text-ink">{label(row)}</span> cancels
+                        everything unsent. This can&apos;t be resumed.
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => stop(row, true)}
+                          disabled={pending}
+                          className="btn-primary h-8 text-xs"
+                        >
+                          Stop and return to manual
+                        </button>
+                        <button
+                          onClick={() => stop(row, false)}
+                          disabled={pending}
+                          className="btn-secondary h-8 text-xs"
+                        >
+                          Stop, keep in automation
+                        </button>
+                        <button
+                          onClick={() => setConfirming(null)}
+                          className="btn-ghost h-8 text-xs"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      <p className="mt-2 text-xs text-muted">
+                        Returning to manual moves them back to the Outreach
+                        section, where you write and send by hand.
+                      </p>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

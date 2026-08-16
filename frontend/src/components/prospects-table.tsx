@@ -8,7 +8,10 @@ import {
   bulkDeleteProspectsAction,
   generateBulkAction,
 } from "@/app/prospect-actions";
-import { bulkHandoffAction } from "@/app/automation-actions";
+import {
+  bulkHandoffAction,
+  bulkReturnToManualAction,
+} from "@/app/automation-actions";
 import type { Prospect, Strategy } from "@/lib/prospect-types";
 import type { EnrollmentState } from "@/lib/types";
 import { EmptyState, Tag, formatDate } from "@/components/ui";
@@ -33,6 +36,12 @@ export function ProspectsTable({
 
   const allSelected = prospects.length > 0 && selected.size === prospects.length;
   const defaultStrategy = strategies.find((s) => s.is_default) ?? strategies[0];
+
+  // How many of the selected rows the automation side currently owns. Decides
+  // which direction the pipeline button offers.
+  const selectedAutomated = prospects.filter(
+    (p) => selected.has(p.id) && p.pipeline_mode === "automated",
+  ).length;
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -88,6 +97,26 @@ export function ProspectsTable({
 
     startTransition(async () => {
       const result = await bulkHandoffAction([...selected]);
+      show(result);
+      if (result.ok) {
+        setSelected(new Set());
+        router.refresh();
+      }
+    });
+  }
+
+  function returnToManual() {
+    if (
+      !window.confirm(
+        `Return ${selected.size} prospect(s) to manual outreach? You write and ` +
+          `send their emails by hand again. Anyone mid-sequence is skipped.`,
+      )
+    ) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await bulkReturnToManualAction([...selected]);
       show(result);
       if (result.ok) {
         setSelected(new Set());
@@ -172,14 +201,28 @@ export function ProspectsTable({
               >
                 {pending ? "Generating…" : `Generate ${selected.size} email(s)`}
               </button>
-              <button
-                onClick={handoff}
-                disabled={pending}
-                className="btn-secondary h-9"
-                title="Let the automation engine run outreach for the selected prospects"
-              >
-                Hand off
-              </button>
+              {/* Whichever direction the selection can actually move. Showing
+                  both at once invites picking the one that does nothing. */}
+              {selectedAutomated > 0 ? (
+                <button
+                  onClick={returnToManual}
+                  disabled={pending}
+                  className="btn-secondary h-9"
+                  title="Take these prospects back into the manual Outreach pipeline"
+                >
+                  Return to manual
+                  {selectedAutomated < selected.size ? ` (${selectedAutomated})` : ""}
+                </button>
+              ) : (
+                <button
+                  onClick={handoff}
+                  disabled={pending}
+                  className="btn-secondary h-9"
+                  title="Let the automation engine run outreach for the selected prospects"
+                >
+                  Hand off
+                </button>
+              )}
               <button
                 onClick={() => archive(true)}
                 disabled={pending}

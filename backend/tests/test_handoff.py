@@ -2,8 +2,15 @@
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy import select
 
-from app.api.prospects import bulk_handoff, handoff_prospect, return_prospect_to_manual
+from app.api.automation_sequences import stop_enrollment
+from app.api.prospects import (
+    bulk_handoff,
+    bulk_return_to_manual,
+    handoff_prospect,
+    return_prospect_to_manual,
+)
 from app.models import (
     EnrollmentState,
     Prospect,
@@ -120,3 +127,59 @@ def test_bulk_handoff_counts_only_changes(db):
 
     assert result == {"updated": 1, "total": 2}
     assert b.pipeline_mode == "automated"
+
+
+def test_bulk_return_skips_the_still_running(db):
+    """One enrolled prospect must not block the rest of the batch."""
+    running = make_prospect(db, "running@example.com")
+    idle = make_prospect(db, "idle@example.com")
+    handoff_prospect(running.id, db)
+    handoff_prospect(idle.id, db)
+    make_enrollment(db, running)
+
+    result = bulk_return_to_manual(BulkHandoffRequest(ids=[running.id, idle.id]), db)
+
+    assert result == {"updated": 1, "blocked": 1, "total": 2}
+    assert idle.pipeline_mode == "manual"
+    assert running.pipeline_mode == "automated"
+
+
+def test_stop_can_hand_the_prospect_back(db):
+    prospect = make_prospect(db)
+    handoff_prospect(prospect.id, db)
+    enrollment = make_enrollment(db, prospect)
+
+    stop_enrollment(enrollment.id, return_to_manual=True, db=db)
+
+    assert enrollment.state == EnrollmentState.stopped
+    assert prospect.pipeline_mode == "manual"
+    assert db.scalars(
+        select(ProspectEvent).where(
+            ProspectEvent.prospect_id == prospect.id,
+            ProspectEvent.type == ProspectEventType.returned_to_manual,
+        )
+    ).all()
+
+
+def test_stop_keeps_automation_when_another_sequence_runs(db):
+    """Reclaiming someone still mid-flight elsewhere would strand that run."""
+    prospect = make_prospect(db)
+    handoff_prospect(prospect.id, db)
+    first = make_enrollment(db, prospect)
+    make_enrollment(db, prospect)  # a second, separate sequence
+
+    stop_enrollment(first.id, return_to_manual=True, db=db)
+
+    assert first.state == EnrollmentState.stopped
+    assert prospect.pipeline_mode == "automated"
+
+
+def test_stop_without_the_flag_leaves_ownership_alone(db):
+    prospect = make_prospect(db)
+    handoff_prospect(prospect.id, db)
+    enrollment = make_enrollment(db, prospect)
+
+    stop_enrollment(enrollment.id, db=db)
+
+    assert enrollment.state == EnrollmentState.stopped
+    assert prospect.pipeline_mode == "automated"

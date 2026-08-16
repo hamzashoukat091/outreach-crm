@@ -69,6 +69,33 @@ export async function bulkHandoffAction(ids: string[]): Promise<ActionState> {
   }
 }
 
+export async function bulkReturnToManualAction(ids: string[]): Promise<ActionState> {
+  if (!ids.length) return { ok: false, message: "Select at least one prospect." };
+
+  try {
+    const res = await api.bulkReturnProspectsToManual(ids);
+    revalidatePath("/prospects");
+    refreshAutomation();
+
+    // Being mid-sequence is the one reason a prospect can't come back, and
+    // it is fixable, so name it instead of reporting a silent shortfall.
+    if (res.blocked) {
+      return {
+        ok: true,
+        message:
+          `Returned ${res.updated} to manual. ${res.blocked} still running in a ` +
+          `sequence — stop those on the Enrollments page first.`,
+      };
+    }
+    if (!res.updated) {
+      return { ok: true, message: "Already in your manual pipeline." };
+    }
+    return { ok: true, message: `Returned ${res.updated} prospect(s) to manual outreach.` };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
 // ---------- Sequences ----------
 
 export async function createSequenceAction(payload: {
@@ -245,15 +272,24 @@ export async function resumeEnrollmentAction(id: string): Promise<ActionState> {
   return { ok: true, message: "Enrollment resumed." };
 }
 
-export async function stopEnrollmentAction(id: string): Promise<ActionState> {
+export async function stopEnrollmentAction(
+  id: string,
+  returnToManual = false,
+): Promise<ActionState> {
   try {
-    await api.stopEnrollment(id);
+    await api.stopEnrollment(id, returnToManual);
   } catch (error) {
     return fail(error);
   }
 
   refreshAutomation();
-  return { ok: true, message: "Enrollment stopped." };
+  revalidatePath("/prospects");
+  return {
+    ok: true,
+    message: returnToManual
+      ? "Stopped and returned to manual outreach."
+      : "Enrollment stopped.",
+  };
 }
 
 // ---------- Messages ----------
