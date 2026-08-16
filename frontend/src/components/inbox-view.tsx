@@ -14,6 +14,18 @@ import { SituationBadge } from "@/components/automation-ui";
 import { formatDate } from "@/components/ui";
 import { Toast, useToast } from "@/components/toast";
 
+// An outbound bubble labelled "Sent" when the message was cancelled or is
+// still waiting claims mail went out that never did. Say the actual state.
+const OUTBOUND_LABEL: Record<string, string> = {
+  sent: "Sent",
+  scheduled: "Scheduled",
+  drafting: "Being written",
+  needs_approval: "Waiting for approval",
+  sending: "Sending",
+  cancelled: "Cancelled — never sent",
+  failed: "Failed to send",
+};
+
 function snippet(text: string, max = 90): string {
   const flat = text.replace(/\s+/g, " ").trim();
   return flat.length > max ? `${flat.slice(0, max)}…` : flat;
@@ -27,6 +39,7 @@ function MessageBubble({
   isPendingApproval: boolean;
 }) {
   const outbound = message.direction === "outbound";
+  const sent = message.state === "sent";
   const timestamp =
     message.sent_at ?? message.received_at ?? message.scheduled_for ?? message.created_at;
 
@@ -37,13 +50,17 @@ function MessageBubble({
       <div
         className={`max-w-[85%] rounded-xl border px-4 py-3 ${
           outbound
-            ? "border-accent/20 bg-accent-soft"
+            ? sent
+              ? "border-accent/20 bg-accent-soft"
+              : // Not on the wire yet (or never will be): dashed and muted, so
+                // it cannot be mistaken for something the prospect received.
+                "border-dashed border-line bg-surface-2/60"
             : "border-line bg-surface-2"
         }`}
       >
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <p className="text-xs font-medium text-muted">
-            {outbound ? "Sent" : "Received"}
+            {outbound ? OUTBOUND_LABEL[message.state] ?? "Sent" : "Received"}
             {message.kind ? ` · ${message.kind.replace(/_/g, " ")}` : ""}
           </p>
           <time className="text-xs text-muted">{formatDate(timestamp)}</time>
