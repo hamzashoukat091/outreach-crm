@@ -213,3 +213,75 @@ def test_unmatched_bounce_is_ignored(db):
 
     assert stored is None
     assert db.query(Suppression).count() == 0
+
+
+def test_mailpit_marks_read_instead_of_deleting(monkeypatch):
+    """Mailpit is the only view of what actually went on the wire.
+
+    Deleting on fetch made sent mail vanish seconds after it appeared -- the
+    poller runs every tick and hoovers up its own outbound, which ingest()
+    discards anyway. Read flags dedupe just as well and leave the evidence.
+    """
+    import httpx
+
+    from app.services.inbox import MailpitSource
+
+    calls: list[tuple[str, str, dict | None]] = []
+
+    def _resp(body):
+        # raise_for_status() needs a bound request, so give every fake one.
+        return httpx.Response(
+            200, json=body, request=httpx.Request("GET", "http://mailpit:8025/")
+        )
+
+    class FakeClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def get(self, url, params=None):
+            calls.append(("GET", url, params))
+            if "search" in url:
+                body = {"messages": [{"ID": "abc"}]}
+            elif url.endswith("/headers"):
+                body = {"Message-Id": ["<in-1@theirs.dev>"]}
+            else:
+                body = {
+                    "ID": "abc",
+                    "From": {"Address": "them@example.com"},
+                    "To": [{"Address": "us@ours.dev"}],
+                    "Subject": "Re: hello",
+                    "Text": "sure, tell me more",
+                    "Date": "2026-01-01T00:00:00Z",
+                }
+            return _resp(body)
+
+        def put(self, url, json=None):
+            calls.append(("PUT", url, json))
+            return _resp({})
+
+        def request(self, method, url, json=None):
+            calls.append((method, url, json))
+            return _resp({})
+
+    monkeypatch.setattr(httpx, "Client", FakeClient)
+
+    results = MailpitSource("http://mailpit:8025").fetch_new()
+
+    assert len(results) == 1
+    assert results[0].message_id == "<in-1@theirs.dev>"
+
+    methods = [c[0] for c in calls]
+    assert "DELETE" not in methods, "fetching must not destroy the mailbox"
+
+    put = next(c for c in calls if c[0] == "PUT")
+    assert put[2] == {"IDs": ["abc"], "Read": True}
+
+    # Only unread mail is pulled, so read flags are a working dedupe.
+    search = next(c for c in calls if "search" in c[1])
+    assert search[2]["query"] == "is:unread"

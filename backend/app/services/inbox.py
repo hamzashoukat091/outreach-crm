@@ -66,11 +66,14 @@ def get_inbox_source(settings_row: AutomationSettings) -> "InboxSource":
 
 
 class MailpitSource:
-    """Polls Mailpit's REST API and deletes what it ingests.
+    """Polls Mailpit's REST API and marks what it ingests as read.
 
-    Deletion (rather than a read flag) is the dedupe mechanism here; the
-    dedupe_key constraint in ingest() is the backstop if a crash lands
-    between fetch and delete.
+    Read flags, not deletion: Mailpit is the only window onto what the engine
+    actually put on the wire, and deleting made sent mail vanish seconds after
+    it appeared -- including our own outbound, which ingest() ignores anyway.
+    Only unread mail is fetched, so the flag is the dedupe; the dedupe_key
+    constraint in ingest() remains the backstop if a crash lands between fetch
+    and flag.
     """
 
     def __init__(self, base_url: str | None = None) -> None:
@@ -81,7 +84,11 @@ class MailpitSource:
         ingested_ids: list[str] = []
 
         with httpx.Client(base_url=self.base_url, timeout=15.0) as client:
-            listing = client.get("/api/v1/messages", params={"limit": 50})
+            # Only unread: read mail has already been through ingest(), so
+            # refetching it would just re-run the dedupe check every tick.
+            listing = client.get(
+                "/api/v1/search", params={"query": "is:unread", "limit": 50}
+            )
             listing.raise_for_status()
             for summary in listing.json().get("messages") or []:
                 mailpit_id = summary["ID"]
@@ -96,9 +103,10 @@ class MailpitSource:
                     logger.exception("failed to fetch mailpit message %s", mailpit_id)
 
             if ingested_ids:
-                # Delete so the next poll doesn't re-ingest the same mail.
-                client.request(
-                    "DELETE", "/api/v1/messages", json={"IDs": ingested_ids}
+                # Mark read so the next poll skips them, but leave the mail in
+                # place: Mailpit is how you see what the engine actually sent.
+                client.put(
+                    "/api/v1/messages", json={"IDs": ingested_ids, "Read": True}
                 ).raise_for_status()
 
         return results
