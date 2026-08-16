@@ -279,3 +279,19 @@ export interface AutomationStatus {
   worker_heartbeat_at: string | null;
   worker_alive: boolean;
 }
+
+/** A ready-made sequence shape, resolved before anything is created. */
+export interface SequenceTemplate {
+  key: string;
+  name: string;
+  summary: string;
+  best_for: string;
+  total_days: number;
+  steps: {
+    position: number;
+    strategy_name: string;
+    wait_days: number;
+    step_instructions: string | null;
+  }[];
+  missing_strategies: string[];
+}

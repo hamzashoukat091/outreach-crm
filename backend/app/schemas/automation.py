@@ -65,6 +65,30 @@ class SequenceCreate(SequenceBase):
     pass
 
 
+class TemplateStepOut(BaseModel):
+    position: int
+    strategy_name: str
+    wait_days: int
+    step_instructions: str | None = None
+
+
+class TemplateOut(BaseModel):
+    """A ready-made shape, resolved for display before anything is created."""
+
+    key: str
+    name: str
+    summary: str
+    best_for: str
+    total_days: int
+    steps: list[TemplateStepOut] = Field(default_factory=list)
+    # Angles this template expects that the database does not have yet.
+    missing_strategies: list[str] = Field(default_factory=list)
+
+
+class TemplateApplyRequest(BaseModel):
+    name: str | None = Field(default=None, max_length=200)
+
+
 class SequenceUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None

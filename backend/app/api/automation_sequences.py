@@ -33,7 +33,11 @@ from app.schemas.automation import (
     StepOut,
     StepReorderRequest,
     StepUpdate,
+    TemplateApplyRequest,
+    TemplateOut,
+    TemplateStepOut,
 )
+from app.services.sequence_templates import BY_KEY, TEMPLATES
 from app.services.sequencer import SequencerError, enroll, log_event, stop
 
 router = APIRouter(prefix="/api/automation", tags=["automation"])
@@ -115,6 +119,104 @@ def list_sequences(db: Session = Depends(get_db)):
 def create_sequence(payload: SequenceCreate, db: Session = Depends(get_db)):
     sequence = Sequence(**payload.model_dump())
     db.add(sequence)
+    db.commit()
+    db.refresh(sequence)
+    return _sequence_out(db, sequence)
+
+
+@router.get("/sequence-templates", response_model=list[TemplateOut])
+def list_sequence_templates(db: Session = Depends(get_db)):
+    """The ready-made shapes, with each step resolved for display.
+
+    `missing_strategies` is reported per template so the UI can warn before
+    applying rather than after: a preset whose angle was renamed still works
+    (the strategy gets recreated) but the user should know it will appear.
+    """
+    known = {
+        name.lower()
+        for name in db.scalars(select(Strategy.name).where(Strategy.kind == "opener"))
+    }
+    out: list[TemplateOut] = []
+    for template in TEMPLATES:
+        missing = sorted(
+            {
+                step.strategy_name
+                for step in template.steps
+                if step.strategy_name.lower() not in known
+            }
+        )
+        out.append(
+            TemplateOut(
+                key=template.key,
+                name=template.name,
+                summary=template.summary,
+                best_for=template.best_for,
+                total_days=template.total_days,
+                missing_strategies=missing,
+                steps=[
+                    TemplateStepOut(
+                        position=index + 1,
+                        strategy_name=step.strategy_name,
+                        wait_days=step.wait_days,
+                        step_instructions=step.step_instructions,
+                    )
+                    for index, step in enumerate(template.steps)
+                ],
+            )
+        )
+    return out
+
+
+@router.post(
+    "/sequence-templates/{key}/apply",
+    response_model=SequenceOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def apply_sequence_template(
+    key: str,
+    payload: TemplateApplyRequest | None = None,
+    db: Session = Depends(get_db),
+):
+    """Build a real sequence from a template. The result is fully editable and
+    keeps no link back, so templates can change without touching it."""
+    template = BY_KEY.get(key)
+    if not template:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown template")
+
+    name = (payload.name if payload else None) or template.name
+    name = name.strip()[:200]
+    # Names are not unique in the schema, but two sequences called the same
+    # thing are indistinguishable in every dropdown that lists them.
+    if db.scalar(select(Sequence).where(func.lower(Sequence.name) == name.lower())):
+        suffix = 2
+        while db.scalar(
+            select(Sequence).where(func.lower(Sequence.name) == f"{name} {suffix}".lower())
+        ):
+            suffix += 1
+        name = f"{name} {suffix}"
+
+    sequence = Sequence(name=name, description=template.summary)
+    db.add(sequence)
+    db.flush()
+
+    for index, step in enumerate(template.steps):
+        strategy = db.scalar(
+            select(Strategy).where(
+                func.lower(Strategy.name) == step.strategy_name.lower(),
+                Strategy.kind == "opener",
+            )
+        )
+        db.add(
+            SequenceStep(
+                sequence_id=sequence.id,
+                position=index + 1,
+                wait_days=step.wait_days,
+                strategy_id=strategy.id if strategy else None,
+                step_instructions=step.step_instructions,
+                is_active=True,
+            )
+        )
+
     db.commit()
     db.refresh(sequence)
     return _sequence_out(db, sequence)

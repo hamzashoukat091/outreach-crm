@@ -14,6 +14,7 @@ import type {
   MessageList,
   SenderFacts,
   SequenceStep,
+  SequenceTemplate,
   SettingsSection,
 } from "./types";
 import type {
@@ -259,6 +260,15 @@ export const api = {
     request<{ status: string; ai_configured: boolean; model: string }>("/health"),
 
   // ---------- Automation: sequences ----------
+
+  listSequenceTemplates: () =>
+    request<SequenceTemplate[]>("/api/automation/sequence-templates"),
+
+  applySequenceTemplate: (key: string, name?: string) =>
+    request<AutomationSequence>(
+      `/api/automation/sequence-templates/${key}/apply`,
+      { method: "POST", body: JSON.stringify({ name: name ?? null }) },
+    ),
 
   listAutomationSequences: () =>
     request<AutomationSequence[]>("/api/automation/sequences"),

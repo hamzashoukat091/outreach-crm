@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { AutomationSequence } from "@/lib/types";
 import { SequenceList } from "@/components/sequence-list";
+import { TemplatePicker } from "@/components/template-picker";
 
 /** Tabs and the create button share one row.
  *
@@ -11,7 +12,9 @@ import { SequenceList } from "@/components/sequence-list";
  *  the tabs and the first card, spending a full row of vertical space to
  *  hold one button. It belongs with the other navigation. */
 export function SequencesPanel({ sequences }: { sequences: AutomationSequence[] }) {
-  const [creating, setCreating] = useState(false);
+  // Templates first, blank second: assembling steps by hand is the rarer
+  // case, and it is one click away from here.
+  const [mode, setMode] = useState<"idle" | "templates" | "blank">("idle");
 
   return (
     <>
@@ -24,17 +27,26 @@ export function SequencesPanel({ sequences }: { sequences: AutomationSequence[] 
         </Link>
 
         <button
-          onClick={() => setCreating((v) => !v)}
+          onClick={() => setMode(mode === "idle" ? "templates" : "idle")}
           className="btn-secondary ml-auto h-9"
         >
-          {creating ? "Cancel" : "New sequence"}
+          {mode === "idle" ? "New sequence" : "Cancel"}
         </button>
       </div>
 
+      {mode === "templates" && (
+        <div className="mb-3">
+          <TemplatePicker
+            onBlank={() => setMode("blank")}
+            onClose={() => setMode("idle")}
+          />
+        </div>
+      )}
+
       <SequenceList
         sequences={sequences}
-        creating={creating}
-        onCreatingChange={setCreating}
+        creating={mode === "blank"}
+        onCreatingChange={(value) => setMode(value ? "blank" : "idle")}
       />
     </>
   );

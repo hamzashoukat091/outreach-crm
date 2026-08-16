@@ -96,6 +96,23 @@ export async function bulkReturnToManualAction(ids: string[]): Promise<ActionSta
   }
 }
 
+export async function applyTemplateAction(
+  key: string,
+  name?: string,
+): Promise<ActionState & { id?: string }> {
+  try {
+    const sequence = await api.applySequenceTemplate(key, name);
+    refreshAutomation();
+    return {
+      ok: true,
+      id: sequence.id,
+      message: `Created "${sequence.name}" — edit the steps or enroll prospects.`,
+    };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
 // ---------- Sequences ----------
 
 export async function createSequenceAction(payload: {
