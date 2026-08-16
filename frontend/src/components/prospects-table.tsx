@@ -227,14 +227,28 @@ export function ProspectsTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {prospects.map((prospect) => (
+              {prospects.map((prospect) => {
+                // A sequence is mid-flight for this person. Marked with a left
+                // edge rather than a tint: selection already owns the row
+                // background, and the two states have to be able to coexist.
+                const running =
+                  prospect.enrollment_state === "active" ||
+                  prospect.enrollment_state === "paused";
+
+                return (
                 <tr
                   key={prospect.id}
                   className={`transition-colors hover:bg-surface-2/50 ${
                     selected.has(prospect.id) ? "bg-accent-soft/40" : ""
                   }`}
                 >
-                  <td className="px-4 py-3">
+                  <td
+                    className={`px-4 py-3 ${
+                      running
+                        ? "border-l-2 border-accent bg-accent-soft/20"
+                        : "border-l-2 border-transparent"
+                    }`}
+                  >
                     <input
                       type="checkbox"
                       checked={selected.has(prospect.id)}
@@ -326,7 +340,8 @@ export function ProspectsTable({
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
