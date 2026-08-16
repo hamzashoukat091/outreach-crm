@@ -39,9 +39,8 @@ export default async function ProspectDetailPage({
   let strategies;
   let health;
   let automationMessages;
-  let enrollments;
   try {
-    [prospect, drafts, events, strategies, health, automationMessages, enrollments] =
+    [prospect, drafts, events, strategies, health, automationMessages] =
       await Promise.all([
         api.getProspect(id),
         api.prospectDrafts(id),
@@ -52,17 +51,10 @@ export default async function ProspectDetailPage({
           .listAutomationMessages({ prospect_id: id })
           .then((page) => page.items)
           .catch(() => []),
-        api.listAutomationEnrollments().catch(() => []),
       ]);
   } catch {
     notFound();
   }
-
-  // "Open" = the sequence would still send; return-to-manual is blocked then.
-  const hasOpenEnrollment = enrollments.some(
-    (row) =>
-      row.prospect_id === id && (row.state === "active" || row.state === "paused"),
-  );
 
   const liveDrafts = drafts.filter((d) => d.status !== "discarded");
 
@@ -273,7 +265,6 @@ export default async function ProspectDetailPage({
             prospect={prospect}
             strategies={strategies.filter((s) => s.is_active && s.kind !== "reply")}
             aiConfigured={health.ai_configured}
-            hasOpenEnrollment={hasOpenEnrollment}
           />
         </div>
       </div>

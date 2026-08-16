@@ -103,6 +103,14 @@ class ProspectOut(ORMModel, ProspectBase):
     top_intent: str | None = None
     draft_count: int = 0
     last_draft_status: DraftStatus | None = None
+    # Live automation state, so the list can show what a prospect is actually
+    # doing rather than only which pipeline owns them.
+    enrollment_id: uuid.UUID | None = None
+    sequence_name: str | None = None
+    enrollment_state: str | None = None
+    enrollment_step: int | None = None
+    enrollment_total_steps: int | None = None
+    next_message_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.db import get_db
@@ -10,11 +11,15 @@ from app.models import (
     DraftStatus,
     EmailDraft,
     EnrollmentState,
+    Message,
+    MessageState,
     Prospect,
     ProspectEvent,
     ProspectEventType,
     ProspectStatus,
+    Sequence,
     SequenceEnrollment,
+    SequenceStep,
     Strategy,
 )
 from app.schemas.automation import BulkHandoffRequest
@@ -71,6 +76,80 @@ def _serialize(prospect: Prospect, drafts: list[EmailDraft] | None = None) -> Pr
     out.draft_count = len(live)
     out.last_draft_status = live[0].status if live else None
     return out
+
+
+def _attach_enrollments(db: Session, items: list[ProspectOut]) -> None:
+    """Fill in live automation state for a page of prospects.
+
+    One query for the whole page rather than one per row: the list is the
+    place people scan to see what is running, and it should not cost 25
+    round trips to say so. Open enrollments win over finished ones, so a
+    prospect who completed a sequence and was re-enrolled shows the live run.
+    """
+    ids = [p.id for p in items]
+    if not ids:
+        return
+
+    rows = db.execute(
+        select(
+            SequenceEnrollment.id,
+            SequenceEnrollment.prospect_id,
+            SequenceEnrollment.state,
+            SequenceEnrollment.current_position,
+            Sequence.name,
+            func.count(SequenceStep.id).label("total_steps"),
+            func.min(
+                case(
+                    (
+                        Message.state.in_(
+                            (MessageState.scheduled, MessageState.drafting)
+                        ),
+                        Message.scheduled_for,
+                    )
+                )
+            ).label("next_at"),
+        )
+        .join(Sequence, Sequence.id == SequenceEnrollment.sequence_id)
+        .outerjoin(SequenceStep, SequenceStep.sequence_id == Sequence.id)
+        .outerjoin(Message, Message.enrollment_id == SequenceEnrollment.id)
+        .where(SequenceEnrollment.prospect_id.in_(ids))
+        .group_by(
+            SequenceEnrollment.id,
+            SequenceEnrollment.prospect_id,
+            SequenceEnrollment.state,
+            SequenceEnrollment.current_position,
+            Sequence.name,
+        )
+        .order_by(
+            SequenceEnrollment.prospect_id,
+            # Open runs first, then most recent.
+            case(
+                (
+                    SequenceEnrollment.state.in_(
+                        (EnrollmentState.active, EnrollmentState.paused)
+                    ),
+                    0,
+                ),
+                else_=1,
+            ),
+            SequenceEnrollment.enrolled_at.desc(),
+        )
+    ).all()
+
+    best: dict[uuid.UUID, Any] = {}
+    for row in rows:
+        best.setdefault(row.prospect_id, row)
+
+    for item in items:
+        row = best.get(item.id)
+        if not row:
+            continue
+        item.enrollment_id = row.id
+        item.sequence_name = row.name
+        item.enrollment_state = row.state.value
+        item.enrollment_step = row.current_position
+        item.enrollment_total_steps = row.total_steps
+        item.next_message_at = row.next_at
 
 
 def _resolve_strategy(db: Session, strategy_id: uuid.UUID | None) -> Strategy:
@@ -158,9 +237,9 @@ def list_prospects(
         .limit(page_size)
     ).unique().all()
 
-    return ProspectList(
-        items=[_serialize(p) for p in rows], total=total, page=page, page_size=page_size
-    )
+    items = [_serialize(p) for p in rows]
+    _attach_enrollments(db, items)
+    return ProspectList(items=items, total=total, page=page, page_size=page_size)
 
 
 @router.post("", response_model=ProspectOut, status_code=status.HTTP_201_CREATED)

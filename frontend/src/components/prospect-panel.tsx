@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import {
@@ -11,12 +10,7 @@ import {
   setProspectStatusAction,
   updateProspectAction,
 } from "@/app/prospect-actions";
-import {
-  handoffProspectAction,
-  returnToManualAction,
-} from "@/app/automation-actions";
 import type { Prospect, ProspectStatus, Strategy } from "@/lib/prospect-types";
-import { PipelineModeBadge } from "@/components/automation-ui";
 import { Toast, useToast } from "@/components/toast";
 
 // 'archived' is not a status here -- use the Archive button, which preserves
@@ -48,12 +42,10 @@ export function ProspectPanel({
   prospect,
   strategies,
   aiConfigured,
-  hasOpenEnrollment = false,
 }: {
   prospect: Prospect;
   strategies: Strategy[];
   aiConfigured: boolean;
-  hasOpenEnrollment?: boolean;
 }) {
   const router = useRouter();
   const { toast, show } = useToast();
@@ -144,74 +136,9 @@ export function ProspectPanel({
     });
   }
 
-  const automated = prospect.pipeline_mode === "automated";
-
-  function togglePipeline() {
-    startTransition(async () => {
-      const result = automated
-        ? await returnToManualAction(prospect.id)
-        : await handoffProspectAction(prospect.id);
-      show(result);
-      if (result.ok) router.refresh();
-    });
-  }
-
   return (
     <>
       <div className="space-y-4">
-        <div className="card p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">Pipeline</h2>
-            <PipelineModeBadge mode={prospect.pipeline_mode} />
-          </div>
-          <p className="mt-2 text-xs text-muted">
-            {!automated
-              ? "You write and send emails for this prospect by hand."
-              : hasOpenEnrollment
-              ? "A sequence is running. The engine drafts, sends, and follows up until they reply."
-              : // Handing off only changes who sends. Nothing is scheduled until
-                // the prospect is enrolled, and saying otherwise sends people
-                // looking for a sequence that was never started.
-                "Marked for automation, but not enrolled in a sequence yet — nothing is scheduled."}
-          </p>
-
-          {automated && !hasOpenEnrollment && (
-            <Link
-              href="/sequences"
-              className="btn-primary mt-3 flex w-full items-center justify-center"
-            >
-              Enroll in a sequence
-            </Link>
-          )}
-
-          <button
-            onClick={togglePipeline}
-            disabled={pending || prospect.is_archived || (automated && hasOpenEnrollment)}
-            title={
-              automated && hasOpenEnrollment
-                ? "Stop their open enrollment first — a sequence is still running."
-                : undefined
-            }
-            className={`${
-              automated && !hasOpenEnrollment ? "btn-ghost" : "btn-secondary"
-            } mt-2 w-full`}
-          >
-            {automated ? "Return to manual" : "Hand off to automation"}
-          </button>
-
-          {!automated && (
-            <p className="mt-2 text-xs text-muted">
-              Handing off only changes who sends. You pick the sequence next.
-            </p>
-          )}
-          {automated && hasOpenEnrollment && (
-            <p className="mt-2 text-xs text-muted">
-              A sequence is still running. Stop the enrollment before returning
-              to manual.
-            </p>
-          )}
-        </div>
-
         <div className="card p-5">
           <h2 className="text-sm font-semibold text-ink">Generate email</h2>
 

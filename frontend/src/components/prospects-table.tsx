@@ -10,7 +10,9 @@ import {
 } from "@/app/prospect-actions";
 import { bulkHandoffAction } from "@/app/automation-actions";
 import type { Prospect, Strategy } from "@/lib/prospect-types";
-import { EmptyState, Tag } from "@/components/ui";
+import type { EnrollmentState } from "@/lib/types";
+import { EmptyState, Tag, formatDate } from "@/components/ui";
+import { EnrollmentStateBadge } from "@/components/automation-ui";
 import { ProspectStatusBadge } from "@/components/prospect-ui";
 import { Toast, useToast } from "@/components/toast";
 
@@ -221,7 +223,7 @@ export function ProspectsTable({
                 <th className="px-4 py-3 font-medium">Company</th>
                 <th className="hidden px-4 py-3 font-medium lg:table-cell">Intent</th>
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Drafts</th>
+                <th className="px-4 py-3 font-medium">Pipeline</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -288,13 +290,39 @@ export function ProspectsTable({
                     <ProspectStatusBadge status={prospect.status} />
                   </td>
 
+                  {/* A prospect is either being worked by hand or by a
+                      sequence. Showing the live run here means the list says
+                      what is happening, not just which pipeline owns them. */}
                   <td className="px-4 py-3">
-                    {prospect.draft_count > 0 ? (
+                    {prospect.sequence_name ? (
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <EnrollmentStateBadge
+                            state={prospect.enrollment_state as EnrollmentState}
+                          />
+                          <span className="truncate text-xs text-ink">
+                            {prospect.sequence_name}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-muted">
+                          {prospect.enrollment_total_steps
+                            ? `Step ${Math.max(prospect.enrollment_step ?? 0, 1)} of ${prospect.enrollment_total_steps}`
+                            : ""}
+                          {prospect.next_message_at
+                            ? ` · next ${formatDate(prospect.next_message_at)}`
+                            : ""}
+                        </p>
+                      </div>
+                    ) : prospect.pipeline_mode === "automated" ? (
+                      <span className="text-xs text-amber-600">
+                        Automated — not enrolled
+                      </span>
+                    ) : prospect.draft_count > 0 ? (
                       <Tag>
                         {prospect.draft_count} draft{prospect.draft_count === 1 ? "" : "s"}
                       </Tag>
                     ) : (
-                      <span className="text-xs text-muted">—</span>
+                      <span className="text-xs text-muted">Manual</span>
                     )}
                   </td>
                 </tr>

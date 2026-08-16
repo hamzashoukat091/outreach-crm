@@ -85,6 +85,13 @@ export interface Prospect {
   tags: string[];
   notes: string | null;
   draft_count: number;
+  // Live automation state, filled in by the list endpoint.
+  enrollment_id?: string | null;
+  sequence_name?: string | null;
+  enrollment_state?: string | null;
+  enrollment_step?: number | null;
+  enrollment_total_steps?: number | null;
+  next_message_at?: string | null;
   last_draft_status: DraftStatus | null;
   created_at: string;
   updated_at: string;
