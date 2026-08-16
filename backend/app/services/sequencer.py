@@ -156,6 +156,28 @@ def enroll(
         {"enrollment_id": str(enrollment.id), "step_position": first_step.position},
     )
     db.flush()
+
+    # 'draft_now_send_later' promises the copy exists before it goes, and the
+    # UI sells it as "you can read it before it goes". The worker only drafts
+    # inside its 24h horizon, so a send further out than that would have left
+    # nothing to read for hours. Write it here instead.
+    #
+    # Failure is not fatal: the row stays in 'drafting' and the worker retries
+    # when the horizon opens, which is exactly the pre-existing behaviour.
+    if mode != "send_at":
+        try:
+            with db.begin_nested():
+                draft_message(db, message)
+        except Exception:
+            # Savepoint-scoped, so the enrollment itself survives. The message
+            # stays in 'drafting' and the worker picks it up on its horizon --
+            # a Claude outage must never block enrolling.
+            logger.warning(
+                "immediate draft failed for message %s; worker will retry",
+                message.id,
+                exc_info=True,
+            )
+
     return enrollment
 
 
