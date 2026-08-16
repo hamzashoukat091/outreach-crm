@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { api } from "@/lib/api";
-import { SequenceList } from "@/components/sequence-list";
+import { SequencesPanel } from "@/components/sequences-panel";
 import { EmptyState, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -27,16 +26,7 @@ export default async function SequencesPage() {
         description="Automated multi-step outreach. Enroll prospects and the engine drafts, waits, and follows up."
       />
 
-      <div className="mb-4 flex gap-2">
-        <Link href="/sequences" className="btn-primary">
-          Sequences
-        </Link>
-        <Link href="/sequences/enrollments" className="btn-secondary">
-          Enrollments
-        </Link>
-      </div>
-
-      <SequenceList sequences={sequences} />
+      <SequencesPanel sequences={sequences} />
     </>
   );
 }

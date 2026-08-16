@@ -85,10 +85,10 @@ export default async function EnrollmentsPage({
       />
 
       <div className="mb-4 flex gap-2">
-        <Link href="/sequences" className="btn-secondary">
+        <Link href="/sequences" className="btn-secondary h-9">
           Sequences
         </Link>
-        <Link href="/sequences/enrollments" className="btn-primary">
+        <Link href="/sequences/enrollments" className="btn-primary h-9">
           Enrollments
         </Link>
       </div>

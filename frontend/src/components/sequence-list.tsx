@@ -134,7 +134,7 @@ function SequenceCard({ sequence }: { sequence: AutomationSequence }) {
               <p className="mt-0.5 text-sm text-muted">{sequence.description}</p>
             )}
             <p className="mt-2 text-xs text-muted">
-              {stepSummary(sequence.steps)} · {enrollmentSummary(sequence)}
+              {enrollmentSummary(sequence)}
               {sequence.total_enrollments > 0 && (
                 <>
                   {" · "}
@@ -142,7 +142,7 @@ function SequenceCard({ sequence }: { sequence: AutomationSequence }) {
                     href={`/sequences/enrollments?sequence_id=${sequence.id}`}
                     className="text-accent hover:underline"
                   >
-                    View
+                    View enrollments
                   </Link>
                 </>
               )}
@@ -172,26 +172,60 @@ function SequenceCard({ sequence }: { sequence: AutomationSequence }) {
             </button>
           </div>
         </div>
+
+        {/* The steps themselves. "3 steps · Day 0, 3, 8" said how many and
+            when but never what -- and what it sends is the thing you are
+            deciding about when you look at this card. */}
+        {sequence.steps.length > 0 && (
+          <ol className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2 border-t border-line pt-3">
+            {[...sequence.steps]
+              .sort((a, b) => a.position - b.position)
+              .map((step, index) => (
+                <li key={step.id} className="flex items-center gap-2">
+                  {index > 0 && (
+                    <span aria-hidden className="text-xs text-muted/50">
+                      →
+                    </span>
+                  )}
+                  <span
+                    className={`rounded-lg border px-2 py-1 text-xs ${
+                      step.is_active
+                        ? "border-line bg-surface-2/60 text-ink"
+                        : "border-dashed border-line text-muted line-through"
+                    }`}
+                    title={step.is_active ? undefined : "This step is turned off"}
+                  >
+                    <span className="text-muted">
+                      {index === 0 ? "Day 0" : `+${step.wait_days}d`}
+                    </span>{" "}
+                    {step.strategy_name ?? (
+                      <span className="text-amber-600">no strategy</span>
+                    )}
+                  </span>
+                </li>
+              ))}
+          </ol>
+        )}
       </div>
       <Toast state={toast} />
     </>
   );
 }
 
-export function SequenceList({ sequences }: { sequences: AutomationSequence[] }) {
-  const [creating, setCreating] = useState(false);
+export function SequenceList({
+  sequences,
+  creating,
+  onCreatingChange,
+}: {
+  sequences: AutomationSequence[];
+  creating: boolean;
+  onCreatingChange: (value: boolean) => void;
+}) {
+  const setCreating = onCreatingChange;
 
   return (
-    <div className="space-y-4">
-      {creating ? (
-        <NewSequenceForm onDone={() => setCreating(false)} />
-      ) : (
-        <div className="flex justify-end">
-          <button onClick={() => setCreating(true)} className="btn-primary">
-            New sequence
-          </button>
-        </div>
-      )}
+    <div className="space-y-3">
+      {creating && <NewSequenceForm onDone={() => setCreating(false)} />}
 
       {sequences.length === 0 && !creating ? (
         <div className="card">
