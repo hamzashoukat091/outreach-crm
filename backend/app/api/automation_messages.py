@@ -13,6 +13,7 @@ from app.models import (
     MessageDirection,
     MessageKind,
     MessageState,
+    Prospect,
     SequenceEnrollment,
 )
 from app.schemas.automation import (
@@ -22,9 +23,12 @@ from app.schemas.automation import (
     MessageDetail,
     MessageList,
     MessageOut,
+    SimulateReplyRequest,
 )
+from app.services.automation_settings import get_settings_row
 from app.services.generator import GenerationError
-from app.services.replier import redraft_reply
+from app.services.inbox import InboundEmail, ingest
+from app.services.replier import handle_inbound, redraft_reply
 from app.services.sequencer import draft_message as sequencer_draft
 
 router = APIRouter(prefix="/api/automation", tags=["automation"])
@@ -284,3 +288,72 @@ def approvals(db: Session = Depends(get_db)):
             )
         )
     return results
+
+
+@router.post("/simulate-reply", response_model=MessageOut)
+def simulate_reply(payload: SimulateReplyRequest, db: Session = Depends(get_db)):
+    """Feed a reply into the pipeline as if the prospect had sent it.
+
+    Mailpit is a trap with no relay, so its Reply button cannot deliver, and
+    real prospects will not answer a test system. This is the only way to
+    exercise the receiving half without wiring up a live mailbox.
+
+    Deliberately NOT a shortcut: the text goes through the same ingest ->
+    match -> classify -> draft path as real mail, so what you see here is
+    what production would do.
+    """
+    prospect = db.get(Prospect, payload.prospect_id)
+    if not prospect:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Prospect not found")
+
+    # Thread onto the most recent thing we actually sent them, so the reply
+    # matches by header rather than falling back to the address heuristic.
+    last_sent = db.scalar(
+        select(Message)
+        .where(
+            Message.prospect_id == prospect.id,
+            Message.direction == MessageDirection.outbound,
+            Message.state == MessageState.sent,
+        )
+        .order_by(Message.sent_at.desc())
+    )
+    if not last_sent:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Nothing has been sent to this prospect yet, so there is nothing to reply to.",
+        )
+
+    settings_row = get_settings_row(db)
+    now = datetime.now(timezone.utc)
+    inbound = InboundEmail(
+        message_id=f"<sim-{uuid.uuid4().hex}@{prospect.email.split('@')[-1]}>",
+        in_reply_to=last_sent.rfc_message_id,
+        references=last_sent.rfc_message_id,
+        from_address=prospect.email,
+        to_address=last_sent.from_address or "outreach@example.com",
+        subject=f"Re: {last_sent.subject or ''}".strip(),
+        text_body=payload.body,
+        date=now,
+    )
+
+    stored = ingest(db, inbound)
+    db.commit()
+    if stored is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "The reply was not ingested (duplicate, bounce, or unknown sender).",
+        )
+
+    try:
+        handle_inbound(db, stored, settings_row)
+        db.commit()
+    except GenerationError as exc:
+        # The reply is stored and the enrollment already knows they answered;
+        # only the drafted response is missing, and that can be regenerated.
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY, f"Reply stored, but drafting failed: {exc}"
+        ) from exc
+
+    db.refresh(stored)
+    return _out(stored)

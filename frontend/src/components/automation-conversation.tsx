@@ -1,7 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AutomationMessage } from "@/lib/types";
+import { SimulateReplyBox } from "@/components/inbox-view";
 import { MessageStateBadge, SituationBadge } from "@/components/automation-ui";
 import { PromptInspector } from "@/components/prompt-inspector";
 import { formatDate } from "@/components/ui";
@@ -66,9 +68,15 @@ function MessageRow({ message }: { message: AutomationMessage }) {
 /** The automated half of a prospect's history, above the manual drafts. */
 export function AutomationConversation({
   messages,
+  prospectId,
 }: {
   messages: AutomationMessage[];
+  prospectId: string;
 }) {
+  const router = useRouter();
+  const hasSent = messages.some(
+    (m) => m.direction === "outbound" && m.state === "sent",
+  );
   const ordered = [...messages].sort((a, b) => {
     const ta = a.sent_at ?? a.received_at ?? a.created_at;
     const tb = b.sent_at ?? b.received_at ?? b.created_at;
@@ -88,6 +96,14 @@ export function AutomationConversation({
           <MessageRow key={message.id} message={message} />
         ))}
       </ul>
+
+      {/* Only once something has actually gone out -- there is nothing to
+          reply to before that, and the endpoint refuses it anyway. */}
+      {hasSent && (
+        <div className="mt-3 border-t border-line pt-3">
+          <SimulateReplyBox prospectId={prospectId} onDone={router.refresh} />
+        </div>
+      )}
     </section>
   );
 }

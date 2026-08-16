@@ -206,7 +206,10 @@ export default async function ProspectDetailPage({
           </section>
 
           {automationMessages.length > 0 && (
-            <AutomationConversation messages={automationMessages} />
+            <AutomationConversation
+              messages={automationMessages}
+              prospectId={prospect.id}
+            />
           )}
 
           <section>

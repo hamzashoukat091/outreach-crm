@@ -330,6 +330,22 @@ export async function regenerateMessageAction(id: string): Promise<ActionState> 
   return { ok: true, message: "Regenerated — review the new draft." };
 }
 
+export async function simulateReplyAction(
+  prospectId: string,
+  body: string,
+): Promise<ActionState> {
+  if (!body.trim()) return { ok: false, message: "Write the reply first." };
+
+  try {
+    await api.simulateReply(prospectId, body);
+  } catch (error) {
+    return fail(error);
+  }
+
+  refreshAutomation();
+  return { ok: true, message: "Reply received — Claude classified it." };
+}
+
 // ---------- Settings ----------
 
 export async function saveAutomationSettingsAction(

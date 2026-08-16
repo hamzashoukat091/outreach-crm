@@ -387,6 +387,12 @@ export const api = {
       method: "POST",
     }),
 
+  simulateReply: (prospectId: string, body: string) =>
+    request<AutomationMessage>("/api/automation/simulate-reply", {
+      method: "POST",
+      body: JSON.stringify({ prospect_id: prospectId, body }),
+    }),
+
   // ---------- Automation: inbox + approvals ----------
 
   automationInbox: () => request<InboxItem[]>("/api/automation/inbox"),

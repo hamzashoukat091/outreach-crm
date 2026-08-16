@@ -7,6 +7,7 @@ import {
   approveMessageAction,
   regenerateMessageAction,
   rejectMessageAction,
+  simulateReplyAction,
 } from "@/app/automation-actions";
 import { api } from "@/lib/api";
 import type { AutomationMessage, EnrollmentDetail, InboxItem } from "@/lib/types";
@@ -179,6 +180,83 @@ function PendingApprovalCard({
   );
 }
 
+/** Type a reply as the prospect and push it through the real pipeline.
+ *
+ *  Mailpit has no relay configured, so its own Reply button cannot deliver,
+ *  and live prospects will not answer a test system. Without this there is no
+ *  way to exercise the receiving half at all. */
+export function SimulateReplyBox({
+  prospectId,
+  onDone,
+}: {
+  prospectId: string;
+  onDone: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [body, setBody] = useState("");
+  const [pending, startTransition] = useTransition();
+  const { toast, show } = useToast();
+
+  function send() {
+    startTransition(async () => {
+      const result = await simulateReplyAction(prospectId, body);
+      show(result);
+      if (result.ok) {
+        setBody("");
+        setOpen(false);
+        onDone();
+      }
+    });
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full rounded-xl border border-dashed border-line px-4 py-3 text-left text-xs text-muted hover:border-accent/40 hover:text-ink"
+      >
+        + Reply as this prospect — to test how the engine answers
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <div className="rounded-xl border border-dashed border-line bg-surface-2/60 px-4 py-3">
+        <p className="text-xs font-medium text-ink">Reply as the prospect</p>
+        <p className="mt-0.5 text-xs text-muted">
+          Goes through the same ingest, classify and draft path as real mail.
+        </p>
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          rows={4}
+          autoFocus
+          placeholder="Interested, but what would this cost us?"
+          className="input mt-2 resize-y text-sm"
+        />
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            onClick={send}
+            disabled={pending || !body.trim()}
+            className="btn-primary h-8 text-xs"
+          >
+            {pending ? "Sending…" : "Send reply"}
+          </button>
+          <button
+            onClick={() => setOpen(false)}
+            disabled={pending}
+            className="btn-ghost h-8 text-xs"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+      <Toast state={toast} />
+    </>
+  );
+}
+
 export function InboxView({ items }: { items: InboxItem[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(
     items[0]?.enrollment_id ?? null,
@@ -327,6 +405,12 @@ export function InboxView({ items }: { items: InboxItem[] }) {
                       initialSubject={pendingMessage.subject ?? ""}
                       initialBody={pendingMessage.body ?? ""}
                       escalationReason={pendingMessage.escalation_reason}
+                      onDone={reloadThread}
+                    />
+                  )}
+                  {selected.prospect_id && (
+                    <SimulateReplyBox
+                      prospectId={selected.prospect_id}
                       onDone={reloadThread}
                     />
                   )}

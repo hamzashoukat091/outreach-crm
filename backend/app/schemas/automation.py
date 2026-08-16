@@ -196,6 +196,13 @@ class MessageApproveRequest(BaseModel):
     body: str | None = None
 
 
+class SimulateReplyRequest(BaseModel):
+    """A reply typed by the operator, standing in for the prospect."""
+
+    prospect_id: uuid.UUID
+    body: str = Field(min_length=1, max_length=8000)
+
+
 # ---------- Inbox / approvals ----------
 
 
