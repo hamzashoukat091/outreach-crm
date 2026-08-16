@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { api } from "@/lib/api";
-import { enrollmentSummary } from "@/components/automation-ui";
 import { EnrollPanel } from "@/components/enroll-panel";
+import { SequenceHeader } from "@/components/sequence-header";
 import { SequenceBuilder } from "@/components/sequence-builder";
 
 export const dynamic = "force-dynamic";
@@ -39,32 +39,7 @@ export default async function SequenceDetailPage({
         ← Back to sequences
       </Link>
 
-      <div className="mb-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">
-            {sequence.name}
-          </h1>
-          {!sequence.is_active && (
-            <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted">
-              inactive
-            </span>
-          )}
-        </div>
-        <p className="mt-1 text-sm text-muted">
-          {sequence.description || "No description."} · {enrollmentSummary(sequence)}
-          {sequence.total_enrollments > 0 && (
-            <>
-              {" · "}
-              <Link
-                href={`/sequences/enrollments?sequence_id=${sequence.id}`}
-                className="text-accent hover:underline"
-              >
-                View enrollments
-              </Link>
-            </>
-          )}
-        </p>
-      </div>
+      <SequenceHeader sequence={sequence} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
