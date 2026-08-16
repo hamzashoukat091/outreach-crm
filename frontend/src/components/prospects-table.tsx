@@ -347,11 +347,21 @@ export function ProspectsTable({
                     <ProspectStatusBadge status={prospect.status} />
                   </td>
 
-                  {/* A prospect is either being worked by hand or by a
-                      sequence. Showing the live run here means the list says
-                      what is happening, not just which pipeline owns them. */}
+                  {/* Ownership decides this column, not enrollment history:
+                      someone stopped and returned to manual still has a
+                      finished enrollment attached, and rendering that would
+                      claim a sequence owns a prospect you took back. */}
                   <td className="px-4 py-3">
-                    {prospect.sequence_name ? (
+                    {prospect.pipeline_mode !== "automated" ? (
+                      prospect.draft_count > 0 ? (
+                        <Tag>
+                          {prospect.draft_count} draft
+                          {prospect.draft_count === 1 ? "" : "s"}
+                        </Tag>
+                      ) : (
+                        <span className="text-xs text-muted">Manual</span>
+                      )
+                    ) : running && prospect.sequence_name ? (
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <EnrollmentStateBadge
@@ -370,16 +380,10 @@ export function ProspectsTable({
                             : ""}
                         </p>
                       </div>
-                    ) : prospect.pipeline_mode === "automated" ? (
+                    ) : (
                       <span className="text-xs text-amber-600">
                         Automated — not enrolled
                       </span>
-                    ) : prospect.draft_count > 0 ? (
-                      <Tag>
-                        {prospect.draft_count} draft{prospect.draft_count === 1 ? "" : "s"}
-                      </Tag>
-                    ) : (
-                      <span className="text-xs text-muted">Manual</span>
                     )}
                   </td>
                 </tr>

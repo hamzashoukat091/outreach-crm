@@ -1,5 +1,29 @@
-import type { EnrollmentState, SequenceStep } from "@/lib/types";
+import type { AutomationSequence, EnrollmentState, SequenceStep } from "@/lib/types";
 import type { ReplySituation } from "@/lib/prospect-types";
+
+/** Live enrollment state in words. "Enrolled" always means right now --
+ *  finished runs are named separately, or the two numbers look contradictory
+ *  ("2 enrolled, 0 active") once anyone stops. */
+export function enrollmentSummary(sequence: AutomationSequence): string {
+  const parts: string[] = [];
+
+  if (sequence.open_enrollments === 0) {
+    parts.push("No one enrolled");
+  } else {
+    parts.push(
+      `${sequence.open_enrollments} enrolled` +
+        (sequence.paused_enrollments
+          ? ` (${sequence.paused_enrollments} paused)`
+          : ""),
+    );
+  }
+
+  // Only mention history when there is some, so a fresh sequence stays quiet.
+  if (sequence.finished_enrollments > 0) {
+    parts.push(`${sequence.finished_enrollments} finished`);
+  }
+  return parts.join(" · ");
+}
 
 const ENROLLMENT_TONE: Record<EnrollmentState, string> = {
   active: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",

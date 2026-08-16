@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { api } from "@/lib/api";
+import { enrollmentSummary } from "@/components/automation-ui";
 import { EnrollPanel } from "@/components/enroll-panel";
 import { SequenceBuilder } from "@/components/sequence-builder";
 
@@ -50,8 +51,18 @@ export default async function SequenceDetailPage({
           )}
         </div>
         <p className="mt-1 text-sm text-muted">
-          {sequence.description || "No description."} · {sequence.total_enrollments}{" "}
-          enrolled, {sequence.active_enrollments} active
+          {sequence.description || "No description."} · {enrollmentSummary(sequence)}
+          {sequence.total_enrollments > 0 && (
+            <>
+              {" · "}
+              <Link
+                href={`/sequences/enrollments?sequence_id=${sequence.id}`}
+                className="text-accent hover:underline"
+              >
+                View enrollments
+              </Link>
+            </>
+          )}
         </p>
       </div>
 

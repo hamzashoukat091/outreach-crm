@@ -14,6 +14,7 @@ from app.api.automation_sequences import (
     add_step,
     create_sequence,
     enroll_prospects,
+    get_sequence,
     pause_enrollment,
     reorder_steps,
     resume_enrollment,
@@ -28,6 +29,7 @@ from app.models import (
     Prospect,
     Sequence,
     SequenceEnrollment,
+    SequenceStep,
     Suppression,
     SuppressionReason,
 )
@@ -175,3 +177,61 @@ def test_reject_cancels(db):
     out = reject_message(message.id, db)
 
     assert out.state == MessageState.cancelled
+
+
+def test_sequence_counts_separate_open_from_finished(db):
+    """'Enrolled' must mean right now, or the card contradicts itself."""
+    sequence = Sequence(name="Counted", steps=[SequenceStep(position=1)])
+    db.add(sequence)
+    db.flush()
+
+    states = [
+        EnrollmentState.active,
+        EnrollmentState.paused,
+        EnrollmentState.stopped,
+        EnrollmentState.completed,
+        EnrollmentState.replied,
+    ]
+    for i, state in enumerate(states):
+        prospect = Prospect(email=f"count{i}@example.com")
+        db.add(prospect)
+        db.flush()
+        db.add(
+            SequenceEnrollment(
+                prospect_id=prospect.id, sequence_id=sequence.id, state=state
+            )
+        )
+    db.flush()
+
+    out = get_sequence(sequence.id, db=db)
+
+    assert out.active_enrollments == 1
+    assert out.paused_enrollments == 1
+    assert out.open_enrollments == 2
+    assert out.finished_enrollments == 3  # stopped + completed + replied
+    assert out.total_enrollments == 5
+
+
+def test_sequence_with_only_stopped_runs_reads_as_empty(db):
+    """The exact case that looked broken: nothing open, history intact."""
+    sequence = Sequence(name="All stopped", steps=[SequenceStep(position=1)])
+    db.add(sequence)
+    db.flush()
+    for i in range(2):
+        prospect = Prospect(email=f"stopped{i}@example.com")
+        db.add(prospect)
+        db.flush()
+        db.add(
+            SequenceEnrollment(
+                prospect_id=prospect.id,
+                sequence_id=sequence.id,
+                state=EnrollmentState.stopped,
+            )
+        )
+    db.flush()
+
+    out = get_sequence(sequence.id, db=db)
+
+    assert out.open_enrollments == 0
+    assert out.finished_enrollments == 2
+    assert out.total_enrollments == 2

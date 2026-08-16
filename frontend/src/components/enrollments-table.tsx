@@ -13,7 +13,15 @@ import { EnrollmentStateBadge } from "@/components/automation-ui";
 import { EmptyState, formatDate } from "@/components/ui";
 import { Toast, useToast } from "@/components/toast";
 
-export function EnrollmentsTable({ enrollments }: { enrollments: EnrollmentRow[] }) {
+export function EnrollmentsTable({
+  enrollments,
+  emptyTitle,
+  emptyDescription,
+}: {
+  enrollments: EnrollmentRow[];
+  emptyTitle?: string;
+  emptyDescription?: string;
+}) {
   const [pending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState<string | null>(null);
   const { toast, show } = useToast();
@@ -58,8 +66,11 @@ export function EnrollmentsTable({ enrollments }: { enrollments: EnrollmentRow[]
     return (
       <div className="card">
         <EmptyState
-          title="No enrollments"
-          description="Nothing matches these filters. Enroll prospects from a sequence's builder page."
+          title={emptyTitle ?? "No enrollments"}
+          description={
+            emptyDescription ??
+            "Nothing matches these filters. Enroll prospects from a sequence's builder page."
+          }
         />
       </div>
     );

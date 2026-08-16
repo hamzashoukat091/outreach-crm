@@ -80,11 +80,23 @@ def _sequence_out(db: Session, sequence: Sequence) -> SequenceOut:
             .group_by(SequenceEnrollment.state)
         ).all()
     )
-    out.total_enrollments = sum(counts.values())
-    out.active_enrollments = counts.get(EnrollmentState.active, 0) + counts.get(
-        EnrollmentState.paused, 0
-    )
+    # Three different questions, so three numbers. Reporting a lifetime total
+    # as "enrolled" next to a live "active" count reads as a contradiction the
+    # moment anyone stops: 2 enrolled / 1 active, with nothing running.
+    out.active_enrollments = counts.get(EnrollmentState.active, 0)
+    out.paused_enrollments = counts.get(EnrollmentState.paused, 0)
+    out.open_enrollments = out.active_enrollments + out.paused_enrollments
     out.replied_enrollments = counts.get(EnrollmentState.replied, 0)
+    out.finished_enrollments = sum(
+        counts.get(state, 0)
+        for state in (
+            EnrollmentState.replied,
+            EnrollmentState.stopped,
+            EnrollmentState.bounced,
+            EnrollmentState.completed,
+        )
+    )
+    out.total_enrollments = sum(counts.values())
     return out
 
 

@@ -26,8 +26,11 @@ export interface AutomationSequence {
   steps: SequenceStep[];
   step_count: number;
   active_enrollments: number;
-  total_enrollments: number;
+  paused_enrollments: number;
+  open_enrollments: number;
   replied_enrollments: number;
+  finished_enrollments: number;
+  total_enrollments: number;
 }
 
 export type EnrollMode = "send_now" | "draft_now_send_later" | "send_at";

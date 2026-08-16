@@ -77,9 +77,14 @@ class SequenceOut(ORMModel, SequenceBase):
     updated_at: datetime
     steps: list[StepOut] = Field(default_factory=list)
     step_count: int = 0
+    # 'open' is what the UI calls "enrolled" -- someone the sequence is still
+    # working on. 'total' is lifetime and only appears where history is meant.
     active_enrollments: int = 0
-    total_enrollments: int = 0
+    paused_enrollments: int = 0
+    open_enrollments: int = 0
     replied_enrollments: int = 0
+    finished_enrollments: int = 0
+    total_enrollments: int = 0
 
 
 # ---------- Enrollment ----------

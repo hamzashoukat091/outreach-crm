@@ -9,7 +9,7 @@ import {
   updateSequenceAction,
 } from "@/app/automation-actions";
 import type { AutomationSequence } from "@/lib/types";
-import { stepSummary } from "@/components/automation-ui";
+import { enrollmentSummary, stepSummary } from "@/components/automation-ui";
 import { EmptyState } from "@/components/ui";
 import { Toast, useToast } from "@/components/toast";
 
@@ -134,8 +134,18 @@ function SequenceCard({ sequence }: { sequence: AutomationSequence }) {
               <p className="mt-0.5 text-sm text-muted">{sequence.description}</p>
             )}
             <p className="mt-2 text-xs text-muted">
-              {stepSummary(sequence.steps)} · {sequence.total_enrollments} enrolled ·{" "}
-              {sequence.active_enrollments} active
+              {stepSummary(sequence.steps)} · {enrollmentSummary(sequence)}
+              {sequence.total_enrollments > 0 && (
+                <>
+                  {" · "}
+                  <Link
+                    href={`/sequences/enrollments?sequence_id=${sequence.id}`}
+                    className="text-accent hover:underline"
+                  >
+                    View
+                  </Link>
+                </>
+              )}
             </p>
           </div>
 
