@@ -35,6 +35,7 @@ class ProspectBase(BaseModel):
     employee_range: str | None = None
     revenue_range: str | None = None
     industry: str | None = None
+    category: str | None = Field(default=None, max_length=60)
     tags: list[str] = Field(default_factory=list)
     notes: str | None = None
 
@@ -67,6 +68,7 @@ class ProspectUpdate(BaseModel):
     revenue_range: str | None = None
     industry: str | None = None
     status: ProspectStatus | None = None
+    category: str | None = Field(default=None, max_length=60)
     tags: list[str] | None = None
     notes: str | None = None
 
@@ -113,6 +115,13 @@ class ProspectOut(ORMModel, ProspectBase):
     next_message_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class CategoryCount(BaseModel):
+    """A sourcing run and how many prospects came from it."""
+
+    category: str | None
+    count: int
 
 
 class ProspectList(BaseModel):
@@ -289,6 +298,20 @@ class StrategyPerformance(BaseModel):
     avg_output_tokens: float | None = None
 
 
+class CategoryPerformance(BaseModel):
+    """How one sourcing run is actually performing.
+
+    reply_rate is over CONTACTED, not over everyone imported -- a vertical
+    you have not emailed yet should read as untested, not as 0% success.
+    """
+
+    category: str | None
+    prospects: int
+    contacted: int
+    replied: int
+    reply_rate: float
+
+
 class ProspectAnalytics(BaseModel):
     total_prospects: int
     complete: int
@@ -298,6 +321,7 @@ class ProspectAnalytics(BaseModel):
     by_status: list[StatusCount]
     by_seniority: list[NamedCount]
     by_industry: list[NamedCount]
+    category_performance: list[CategoryPerformance] = Field(default_factory=list)
     by_employee_range: list[NamedCount]
     top_intent_topics: list[NamedCount]
 

@@ -16,6 +16,7 @@ export default async function ProspectsPage({
     q?: string;
     status?: string;
     seniority?: string;
+    category?: string;
     completeness?: string;
     view?: string;
     page?: string;
@@ -28,12 +29,14 @@ export default async function ProspectsPage({
   let data;
   let strategies;
   let analytics;
+  let categories;
   try {
-    [data, strategies, analytics] = await Promise.all([
+    [data, strategies, analytics, categories] = await Promise.all([
       api.listProspects({
         q: params.q,
         status: params.status,
         seniority: params.seniority,
+        category: params.category,
         completeness: params.completeness,
         archived: archivedView,
         page,
@@ -41,6 +44,7 @@ export default async function ProspectsPage({
       }),
       api.listStrategies(),
       api.analytics().catch(() => null),
+      api.listProspectCategories().catch(() => []),
     ]);
   } catch {
     return (
@@ -118,7 +122,7 @@ export default async function ProspectsPage({
 
       {!archivedView && (
         <Suspense fallback={null}>
-          <ProspectToolbar seniorities={seniorities} />
+          <ProspectToolbar seniorities={seniorities} categories={categories} />
         </Suspense>
       )}
 

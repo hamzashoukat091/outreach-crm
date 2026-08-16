@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.models import DraftStatus, EmailDraft, Prospect, ProspectStatus
 from app.schemas.prospects import (
+    CategoryPerformance,
     DayCount,
     NamedCount,
     ProspectAnalytics,
@@ -32,6 +33,60 @@ def _top(db: Session, column, limit: int = 8) -> list[NamedCount]:
         .limit(limit)
     ).all()
     return [NamedCount(label=str(r[0]), count=r[1]) for r in rows]
+
+
+def _category_performance(db: Session) -> list["CategoryPerformance"]:
+    """Reply rate per sourcing run -- which vertical is worth more credits.
+
+    Contacted means we actually reached out (a draft was approved, or the
+    prospect moved past 'new'); replying without being contacted is not
+    possible, so the rate has a real denominator instead of counting people
+    who were never emailed.
+    """
+    approved = (
+        select(EmailDraft.prospect_id)
+        .where(EmailDraft.status == DraftStatus.approved)
+        .distinct()
+        .scalar_subquery()
+    )
+    contacted = case(
+        (
+            sa.or_(
+                Prospect.id.in_(approved),
+                Prospect.status.notin_((ProspectStatus.new, ProspectStatus.drafted)),
+            ),
+            1,
+        ),
+        else_=0,
+    )
+    replied = case((Prospect.status.in_(POSITIVE), 1), else_=0)
+
+    rows = db.execute(
+        select(
+            Prospect.category,
+            func.count(Prospect.id),
+            func.sum(contacted),
+            func.sum(replied),
+        )
+        .where(Prospect.is_archived.is_(False))
+        .group_by(Prospect.category)
+        .order_by(func.count(Prospect.id).desc())
+    ).all()
+
+    out: list[CategoryPerformance] = []
+    for category, total, contacted_n, replied_n in rows:
+        contacted_n = int(contacted_n or 0)
+        replied_n = int(replied_n or 0)
+        out.append(
+            CategoryPerformance(
+                category=category,
+                prospects=total,
+                contacted=contacted_n,
+                replied=replied_n,
+                reply_rate=round(replied_n / contacted_n * 100, 1) if contacted_n else 0.0,
+            )
+        )
+    return out
 
 
 @router.get("", response_model=ProspectAnalytics)
@@ -194,6 +249,7 @@ def get_analytics(days: int = Query(30, ge=7, le=180), db: Session = Depends(get
         by_status=by_status,
         by_seniority=_top(db, Prospect.seniority),
         by_industry=_top(db, Prospect.industry),
+        category_performance=_category_performance(db),
         by_employee_range=_top(db, Prospect.employee_range),
         top_intent_topics=top_intent,
         total_drafts=total_drafts,

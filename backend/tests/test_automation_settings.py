@@ -125,9 +125,13 @@ def test_resolve_draft_later_clamps_into_the_window():
 
 def test_resolve_draft_later_never_schedules_in_the_past():
     settings = make_settings(send_days=[1, 2, 3, 4, 5, 6, 7], default_delay_days=0)
+    # Take the reference BEFORE the call: comparing against a now() sampled
+    # afterwards fails whenever the clock ticks mid-test, which is a race in
+    # the assertion rather than a send scheduled in the past.
+    before = datetime.now(timezone.utc)
     result = resolve_send_time(settings, "draft_now_send_later")
 
-    assert result >= datetime.now(timezone.utc)
+    assert result >= before
 
 
 # ---------- Settings row management ----------

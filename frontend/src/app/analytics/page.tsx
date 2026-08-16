@@ -199,6 +199,58 @@ export default async function AnalyticsPage() {
         />
       </div>
 
+      {/* Which sourcing run is worth more credits. Rate is over CONTACTED,
+          so a vertical you have not emailed yet reads as untested rather than
+          as a 0% failure. */}
+      {stats.category_performance.length > 0 && (
+        <section className="card mt-6 p-5">
+          <h2 className="text-sm font-semibold text-ink">Category performance</h2>
+          <p className="mt-0.5 text-xs text-muted">
+            Reply rate is measured against prospects you actually contacted.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                  <th className="pb-2 font-medium">Category</th>
+                  <th className="pb-2 text-right font-medium">Prospects</th>
+                  <th className="pb-2 text-right font-medium">Contacted</th>
+                  <th className="pb-2 text-right font-medium">Replied</th>
+                  <th className="pb-2 text-right font-medium">Reply rate</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {stats.category_performance.map((row) => (
+                  <tr key={row.category ?? "none"}>
+                    <td className="py-2 text-ink">
+                      {row.category ?? (
+                        <span className="text-muted">Uncategorised</span>
+                      )}
+                    </td>
+                    <td className="py-2 text-right tabular-nums text-muted">
+                      {row.prospects}
+                    </td>
+                    <td className="py-2 text-right tabular-nums text-muted">
+                      {row.contacted}
+                    </td>
+                    <td className="py-2 text-right tabular-nums text-muted">
+                      {row.replied}
+                    </td>
+                    <td className="py-2 text-right tabular-nums text-ink">
+                      {row.contacted === 0 ? (
+                        <span className="text-muted">not tested yet</span>
+                      ) : (
+                        `${row.reply_rate}%`
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       <section className="card mt-6 p-5">
         <h2 className="text-sm font-semibold text-ink">Strategy performance</h2>
         {stats.strategy_performance.length === 0 ? (

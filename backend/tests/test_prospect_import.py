@@ -1,6 +1,9 @@
 """Parser tests built around the real export's quirks."""
 
-from app.services.prospect_import import parse_row
+from sqlalchemy import select
+
+from app.models import Prospect
+from app.services.prospect_import import import_prospects_csv, parse_row
 
 FULL_ROW = {
     "row_num": "1",
@@ -137,3 +140,52 @@ def test_malformed_json_degrades_instead_of_failing():
 
     assert error is None
     assert payload["skills"] == ["Strategy", "Finance", "Leadership"]
+
+
+def test_category_labels_every_row(db):
+    """Each CSV is one vertical; the label comes from the operator, not the file."""
+    csv_bytes = (
+        b"contact_professions_email,prospect_first_name,business_name\n"
+        b"a@example.com,Ann,Acme\n"
+        b"b@example.com,Bo,Beta\n"
+    )
+
+    result = import_prospects_csv(db, csv_bytes, category="Dental practices")
+
+    assert result["created"] == 2
+    rows = db.scalars(select(Prospect)).all()
+    assert {r.category for r in rows} == {"Dental practices"}
+
+
+def test_category_is_optional_and_blank_means_none(db):
+    csv_bytes = b"contact_professions_email\nc@example.com\n"
+
+    import_prospects_csv(db, csv_bytes, category="   ")
+
+    prospect = db.scalar(select(Prospect).where(Prospect.email == "c@example.com"))
+    assert prospect.category is None
+
+
+def test_reimport_relabels_but_a_blank_never_wipes(db):
+    """Re-importing under a new vertical should move them; importing the same
+    file with no category must not silently strip the label."""
+    csv_bytes = b"contact_professions_email\nd@example.com\n"
+    import_prospects_csv(db, csv_bytes, category="SaaS founders")
+
+    import_prospects_csv(db, csv_bytes, category="Marketing agencies")
+    prospect = db.scalar(select(Prospect).where(Prospect.email == "d@example.com"))
+    assert prospect.category == "Marketing agencies"
+
+    import_prospects_csv(db, csv_bytes)
+    db.refresh(prospect)
+    assert prospect.category == "Marketing agencies"
+
+
+def test_category_is_truncated_not_rejected(db):
+    """A 60-char column must not turn a long label into a failed import."""
+    csv_bytes = b"contact_professions_email\ne@example.com\n"
+
+    import_prospects_csv(db, csv_bytes, category="x" * 200)
+
+    prospect = db.scalar(select(Prospect).where(Prospect.email == "e@example.com"))
+    assert len(prospect.category) == 60

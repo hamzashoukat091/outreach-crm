@@ -82,6 +82,7 @@ export interface Prospect {
   experience: string[];
   other_emails: string[];
   top_intent: string | null;
+  category: string | null;
   tags: string[];
   notes: string | null;
   draft_count: number;
@@ -210,6 +211,13 @@ export interface Analytics {
   thin_approval_rate: number;
   rich_approval_rate: number;
   activity: { day: string; generated: number; approved: number }[];
+  category_performance: {
+    category: string | null;
+    prospects: number;
+    contacted: number;
+    replied: number;
+    reply_rate: number;
+  }[];
   strategy_performance: {
     strategy_id: string | null;
     name: string;
@@ -222,4 +230,10 @@ export interface Analytics {
   }[];
   total_input_tokens: number;
   total_output_tokens: number;
+}
+
+/** A sourcing run (one imported CSV) and how many prospects came from it. */
+export interface CategoryCount {
+  category: string | null;
+  count: number;
 }

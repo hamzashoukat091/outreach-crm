@@ -18,6 +18,7 @@ import type {
 } from "./types";
 import type {
   Analytics,
+  CategoryCount,
   DraftPrompt,
   DraftStatus,
   EmailDraft,
@@ -84,6 +85,7 @@ export const api = {
       status?: string;
       seniority?: string;
       industry?: string;
+      category?: string;
       completeness?: string;
       has_draft?: boolean;
       archived?: boolean;
@@ -98,6 +100,9 @@ export const api = {
     const suffix = qs.toString() ? `?${qs}` : "";
     return request<ProspectList>(`/api/prospects${suffix}`);
   },
+
+  listProspectCategories: () =>
+    request<CategoryCount[]>("/api/prospects/categories"),
 
   getProspect: (id: string) => request<Prospect>(`/api/prospects/${id}`),
 

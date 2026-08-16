@@ -38,9 +38,14 @@ export async function importProspectsAction(
   const upload = new FormData();
   upload.append("file", file);
 
+  // Category rides as a query param, not form data: it labels the whole file
+  // rather than any one row, and the endpoint takes it that way.
+  const category = String(formData.get("category") ?? "").trim();
+  const qs = category ? `?category=${encodeURIComponent(category)}` : "";
+
   try {
     const res = await fetch(
-      `${process.env.API_URL ?? "http://api:8000"}/api/prospects/import`,
+      `${process.env.API_URL ?? "http://api:8000"}/api/prospects/import${qs}`,
       { method: "POST", body: upload, cache: "no-store" },
     );
     const data = await res.json();

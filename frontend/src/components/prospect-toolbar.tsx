@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createProspectAction, importProspectsAction } from "@/app/prospect-actions";
+import type { CategoryCount } from "@/lib/prospect-types";
 import { Toast, useToast } from "@/components/toast";
 
 // 'archived' is deliberately absent: archiving is a separate flag with its own
@@ -22,10 +23,17 @@ const STATUS_LABEL: Record<string, string> = {
   not_interested: "Not interested",
 };
 
-export function ProspectToolbar({ seniorities }: { seniorities: string[] }) {
+export function ProspectToolbar({
+  seniorities,
+  categories = [],
+}: {
+  seniorities: string[];
+  categories?: CategoryCount[];
+}) {
   const router = useRouter();
   const params = useSearchParams();
   const [showAdd, setShowAdd] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const { toast, show } = useToast();
 
   const [addState, addAction, addPending] = useActionState(createProspectAction, null);
@@ -49,7 +57,10 @@ export function ProspectToolbar({ seniorities }: { seniorities: string[] }) {
   useEffect(() => {
     if (importState) {
       show(importState);
-      if (importState.ok) router.refresh();
+      if (importState.ok) {
+        setPendingFile(null);
+        router.refresh();
+      }
     }
   }, [importState, show, router]);
 
@@ -98,6 +109,21 @@ export function ProspectToolbar({ seniorities }: { seniorities: string[] }) {
           <option value="incomplete">Missing company info</option>
         </select>
 
+        {categories.length > 0 && (
+          <select
+            defaultValue={params.get("category") ?? ""}
+            onChange={(e) => setParam("category", e.target.value)}
+            className="input h-[38px] w-auto py-0"
+          >
+            <option value="">All categories</option>
+            {categories.map((c) => (
+              <option key={c.category ?? "none"} value={c.category ?? "none"}>
+                {(c.category ?? "Uncategorised") + ` (${c.count})`}
+              </option>
+            ))}
+          </select>
+        )}
+
         {seniorities.length > 0 && (
           <select
             defaultValue={params.get("seniority") ?? ""}
@@ -114,23 +140,89 @@ export function ProspectToolbar({ seniorities }: { seniorities: string[] }) {
         )}
 
         <div className="ml-auto flex items-center gap-2">
-          <form action={importAction}>
-            <label className="btn-secondary cursor-pointer">
-              {importPending ? "Importing…" : "Import CSV"}
-              <input
-                type="file"
-                name="file"
-                accept=".csv"
-                className="hidden"
-                onChange={(e) => e.currentTarget.form?.requestSubmit()}
-              />
-            </label>
-          </form>
+          <label className="btn-secondary cursor-pointer">
+            Import CSV
+            <input
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                if (file) setPendingFile(file);
+                e.currentTarget.value = ""; // re-picking the same file re-fires
+              }}
+            />
+          </label>
           <button onClick={() => setShowAdd((v) => !v)} className="btn-primary">
             {showAdd ? "Cancel" : "Add prospect"}
           </button>
         </div>
       </div>
+
+      {/* Each export is one vertical, and the CSV carries no column saying
+          which. Asking here is the only moment that knowledge exists. */}
+      {pendingFile && (
+        <form action={importAction} className="card mb-4 p-5">
+          <p className="text-sm font-medium text-ink">
+            Import {pendingFile.name}
+          </p>
+          <p className="mt-0.5 text-xs text-muted">
+            Label this batch so you can filter by it and compare reply rates
+            between verticals later.
+          </p>
+
+          <input
+            ref={(node) => {
+              if (!node || !pendingFile) return;
+              // FileList is not constructible; DataTransfer is the only way to
+              // hand a File to an <input type="file"> so the form submits it.
+              const dt = new DataTransfer();
+              dt.items.add(pendingFile);
+              node.files = dt.files;
+            }}
+            type="file"
+            name="file"
+            className="hidden"
+          />
+          <label className="label mt-3" htmlFor="import-category">
+            Category
+          </label>
+          <input
+            id="import-category"
+            name="category"
+            list="known-categories"
+            maxLength={60}
+            autoFocus
+            defaultValue={categories[0]?.category ?? ""}
+            placeholder="Dental practices"
+            className="input"
+          />
+          <datalist id="known-categories">
+            {categories
+              .filter((c) => c.category)
+              .map((c) => (
+                <option key={c.category} value={c.category!} />
+              ))}
+          </datalist>
+
+          <div className="mt-3 flex items-center gap-2">
+            <button type="submit" disabled={importPending} className="btn-primary h-9">
+              {importPending ? "Importing…" : "Import"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingFile(null)}
+              disabled={importPending}
+              className="btn-ghost h-9"
+            >
+              Cancel
+            </button>
+            <span className="text-xs text-muted">
+              Leave blank to import without a category.
+            </span>
+          </div>
+        </form>
+      )}
 
       {showAdd && (
         <form ref={formRef} action={addAction} className="card mb-4 grid gap-4 p-5 sm:grid-cols-2">

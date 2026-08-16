@@ -25,6 +25,7 @@ from app.models import (
 from app.schemas.automation import BulkHandoffRequest
 from app.schemas.prospects import (
     ArchiveRequest,
+    CategoryCount,
     BulkArchiveRequest,
     BulkGenerateRequest,
     BulkGenerateResult,
@@ -172,6 +173,22 @@ def _resolve_strategy(db: Session, strategy_id: uuid.UUID | None) -> Strategy:
     return strategy
 
 
+@router.get("/categories", response_model=list[CategoryCount])
+def list_categories(db: Session = Depends(get_db)):
+    """Every sourcing run present, with counts, for the filter bar.
+
+    Uncategorised rows come back as category=None so imports predating this
+    field are still reachable rather than silently invisible.
+    """
+    rows = db.execute(
+        select(Prospect.category, func.count(Prospect.id))
+        .where(Prospect.is_archived.is_(False))
+        .group_by(Prospect.category)
+        .order_by(func.count(Prospect.id).desc())
+    ).all()
+    return [CategoryCount(category=row[0], count=row[1]) for row in rows]
+
+
 # ---------- CRUD ----------
 
 
@@ -182,6 +199,7 @@ def list_prospects(
     prospect_status: ProspectStatus | None = Query(None, alias="status"),
     seniority: str | None = None,
     industry: str | None = None,
+    category: str | None = Query(None, description="Which sourcing run they came from"),
     completeness: str | None = Query(None, pattern="^(complete|incomplete)$"),
     has_draft: bool | None = None,
     archived: bool = Query(
@@ -213,6 +231,13 @@ def list_prospects(
         stmt = stmt.where(Prospect.seniority == seniority)
     if industry:
         stmt = stmt.where(Prospect.industry == industry)
+    if category:
+        # "none" is the only way to ask for rows imported before categories
+        # existed, since an empty value means "no filter".
+        stmt = stmt.where(
+            Prospect.category.is_(None) if category == "none"
+            else Prospect.category == category
+        )
     if completeness == "complete":
         stmt = stmt.where(Prospect.is_complete.is_(True))
     elif completeness == "incomplete":
@@ -499,6 +524,11 @@ def bulk_return_to_manual(payload: BulkHandoffRequest, db: Session = Depends(get
 async def import_csv(
     file: UploadFile = File(...),
     update_existing: bool = Query(True),
+    category: str | None = Query(
+        None,
+        max_length=60,
+        description="Label every row with the vertical this CSV was sourced for.",
+    ),
     db: Session = Depends(get_db),
 ):
     if not (file.filename or "").lower().endswith(".csv"):
@@ -510,7 +540,9 @@ async def import_csv(
     if not content.strip():
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "File is empty")
 
-    return import_prospects_csv(db, content, update_existing=update_existing)
+    return import_prospects_csv(
+        db, content, update_existing=update_existing, category=category
+    )
 
 
 # ---------- Events ----------

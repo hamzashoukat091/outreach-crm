@@ -331,6 +331,13 @@ export function ProspectsTable({
                     ) : (
                       <p className="text-xs text-amber-600">Needs company info</p>
                     )}
+                    {/* Which sourcing run they came from -- the answer to
+                        "why is this person in my CRM?". */}
+                    {prospect.category && (
+                      <span className="mt-1 inline-flex rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted">
+                        {prospect.category}
+                      </span>
+                    )}
                   </td>
 
                   <td className="hidden max-w-56 px-4 py-3 lg:table-cell">

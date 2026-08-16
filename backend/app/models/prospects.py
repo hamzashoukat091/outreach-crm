@@ -130,6 +130,12 @@ class Prospect(Base):
     pipeline_mode: Mapped[str] = mapped_column(
         String(20), default="manual", nullable=False, index=True
     )
+    # Which sourcing run this prospect came from -- the vertical you searched
+    # for, set once at import. A column rather than a tag because it is exactly
+    # one value per prospect and the whole point is grouping by it: reply rate
+    # per category is how you learn which vertical is worth more credits.
+    category: Mapped[str | None] = mapped_column(String(60), index=True)
+
     # False when the export gave us an email but no company context. Surfaced in
     # the UI so a thin generation is never mistaken for a well-grounded one.
     is_complete: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

@@ -215,8 +215,14 @@ def parse_row(raw_row: dict[str, Any], row_no: int) -> tuple[dict | None, str | 
 
 
 def import_prospects_csv(
-    db: Session, content: bytes, update_existing: bool = True
+    db: Session,
+    content: bytes,
+    update_existing: bool = True,
+    category: str | None = None,
 ) -> dict[str, Any]:
+    """Load a Vibe export. `category` labels every row with the vertical the
+    CSV was sourced for, since the file itself carries no such column."""
+    category = (category or "").strip()[:60] or None
     result: dict[str, Any] = {
         "created": 0,
         "updated": 0,
@@ -260,6 +266,11 @@ def import_prospects_csv(
 
         if not payload.get("is_complete", True):
             result["incomplete"] += 1
+
+        # The CSV has no category column; the label comes from the operator at
+        # upload time and applies to the whole file.
+        if category:
+            payload["category"] = category
 
         # Match on the vendor id first, then email.
         existing = None
