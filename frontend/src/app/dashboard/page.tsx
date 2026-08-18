@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { EmptyState, PageHeader, StatCard } from "@/components/ui";
+import { PageHeader, StatCard } from "@/components/ui";
+import { ApiError } from "@/components/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -20,12 +21,7 @@ export default async function DashboardPage() {
 
   if (!prospects && !automation) {
     return (
-      <div className="card">
-        <EmptyState
-          title="Can't reach the API"
-          description="The backend isn't responding. Check `docker compose ps`."
-        />
-      </div>
+      <ApiError what="The dashboard" />
     );
   }
 

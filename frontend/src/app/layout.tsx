@@ -1,7 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { NavLinks } from "@/components/nav-links";
+
+/* The app declared font-sans: var(--font-sans) but never defined it, so every
+   screen fell through to the browser's generic default -- Times New Roman in
+   Chromium. Inter is loaded and self-hosted by next/font, which also avoids
+   the layout shift a webfont link would cause. */
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
   title: "Outreach — Cold outreach CRM",
@@ -10,12 +21,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <body className="min-h-screen font-sans antialiased">
         <div className="flex min-h-screen flex-col lg:flex-row">
-          <aside className="border-b border-line bg-surface lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r">
+          <aside className="sticky top-0 z-30 border-b border-line bg-surface/80 backdrop-blur-xl lg:h-screen lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r">
             <div className="flex items-center gap-2.5 px-5 py-5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-bold text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-solid text-sm font-bold text-white shadow-glow">
                 O
               </div>
               <div>

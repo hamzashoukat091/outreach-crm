@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 
 export function Tag({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-md bg-surface-2 px-2 py-0.5 text-xs text-muted">
+    <span className="inline-flex items-center rounded-md bg-surface-2 px-2 py-0.5 text-xs
+      text-muted ring-1 ring-inset ring-line">
       {children}
     </span>
   );
@@ -12,15 +13,25 @@ export function EmptyState({
   title,
   description,
   action,
+  icon,
 }: {
   title: string;
   description: string;
   action?: ReactNode;
+  icon?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+    <div className="flex animate-fade-in flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      {/* A soft plate behind the glyph keeps an empty screen from reading as a
+          loading failure. */}
+      {icon && (
+        <div className="mb-1 flex h-11 w-11 items-center justify-center rounded-xl
+          bg-surface-2 text-muted ring-1 ring-inset ring-line">
+          {icon}
+        </div>
+      )}
       <p className="text-base font-medium text-ink">{title}</p>
-      <p className="max-w-sm text-sm text-muted">{description}</p>
+      <p className="max-w-sm text-sm leading-relaxed text-muted">{description}</p>
       {action}
     </div>
   );
@@ -36,10 +47,22 @@ export function StatCard({
   hint?: string;
 }) {
   return (
-    <div className="card p-5">
-      <p className="text-sm text-muted">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight text-ink">{value}</p>
-      {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
+    <div className="card group relative overflow-hidden p-5 transition-shadow duration-200
+      hover:shadow-card-hover">
+      {/* A barely-there wash from the top-left. At 3% it is not perceived as
+          colour, only as the surface not being perfectly flat. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br
+          from-accent/[0.035] to-transparent"
+      />
+      <div className="relative">
+        <p className="eyebrow">{label}</p>
+        <p className="tabular mt-2 text-[2rem] font-semibold leading-none tracking-tight text-ink">
+          {value}
+        </p>
+        {hint && <p className="mt-2 text-xs leading-relaxed text-muted">{hint}</p>}
+      </div>
     </div>
   );
 }
@@ -55,9 +78,13 @@ export function PageHeader({
 }) {
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted">{description}</p>}
+      <div className="min-w-0">
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.02em] text-ink">
+          {title}
+        </h1>
+        {description && (
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted">{description}</p>
+        )}
       </div>
       {action}
     </div>

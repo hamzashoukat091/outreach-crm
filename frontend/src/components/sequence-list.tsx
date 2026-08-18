@@ -114,7 +114,7 @@ function SequenceCard({ sequence }: { sequence: AutomationSequence }) {
 
   return (
     <>
-      <div className="card p-5">
+      <div className="card p-5 transition-shadow duration-200 hover:shadow-card-hover">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">

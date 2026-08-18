@@ -162,8 +162,12 @@ export function ProspectsTable({
   return (
     <>
       {selected.size > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3">
-          <span className="text-sm font-medium text-ink">{selected.size} selected</span>
+        <div className="sticky top-2 z-20 mb-3 flex flex-wrap items-center gap-3 rounded-xl
+          border border-accent/25 bg-accent-soft/90 px-4 py-3 shadow-card backdrop-blur-md
+          animate-fade-up">
+          <span className="tabular text-sm font-medium text-ink">
+            {selected.size} selected
+          </span>
 
           <select
             value={strategyId}
@@ -251,9 +255,9 @@ export function ProspectsTable({
           <table className="w-full text-sm">
             {/* Sticky: scanning row 40 is useless if the column labels
                 scrolled away at row 10. */}
-            <thead className="sticky top-0 z-10 border-b border-line bg-surface-2 backdrop-blur">
-              <tr className="text-left text-xs uppercase tracking-wide text-muted">
-                <th className="w-10 px-4 py-2.5">
+            <thead className="sticky top-0 z-10 border-b border-line bg-surface-2/85 backdrop-blur-md">
+              <tr className="text-left text-[11px] uppercase tracking-[0.07em] text-muted">
+                <th className="w-10 px-4 py-3">
                   <input
                     type="checkbox"
                     checked={allSelected}
@@ -261,17 +265,17 @@ export function ProspectsTable({
                       setSelected(allSelected ? new Set() : new Set(prospects.map((p) => p.id)))
                     }
                     aria-label="Select all prospects"
-                    className="h-4 w-4 rounded border-line accent-[rgb(var(--accent))]"
+                    className="h-4 w-4 cursor-pointer rounded border-line accent-[rgb(var(--accent))]"
                   />
                 </th>
-                <th className="px-4 py-2.5 font-medium">Prospect</th>
-                <th className="px-4 py-2.5 font-medium">Company</th>
-                <th className="hidden px-4 py-2.5 font-medium lg:table-cell">Intent</th>
-                <th className="px-4 py-2.5 font-medium">Status</th>
-                <th className="px-4 py-2.5 font-medium">Pipeline</th>
+                <th className="px-4 py-3 font-medium">Prospect</th>
+                <th className="px-4 py-3 font-medium">Company</th>
+                <th className="hidden px-4 py-3 font-medium lg:table-cell">Intent</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Pipeline</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line">
+            <tbody className="divide-y divide-line-soft">
               {prospects.map((prospect) => {
                 // A sequence is mid-flight for this person. Marked with a left
                 // edge rather than a tint: selection already owns the row
@@ -283,12 +287,12 @@ export function ProspectsTable({
                 return (
                 <tr
                   key={prospect.id}
-                  className={`transition-colors hover:bg-surface-2/50 ${
-                    selected.has(prospect.id) ? "bg-accent-soft/40" : ""
+                  className={`transition-colors duration-100 hover:bg-surface-2/60 ${
+                    selected.has(prospect.id) ? "bg-accent-soft/50" : ""
                   }`}
                 >
                   <td
-                    className={`px-4 py-2.5 ${
+                    className={`px-4 py-3 ${
                       running
                         ? "border-l-2 border-accent bg-accent-soft/20"
                         : "border-l-2 border-transparent"
@@ -299,11 +303,11 @@ export function ProspectsTable({
                       checked={selected.has(prospect.id)}
                       onChange={() => toggle(prospect.id)}
                       aria-label={`Select ${prospect.full_name}`}
-                      className="h-4 w-4 rounded border-line accent-[rgb(var(--accent))]"
+                      className="h-4 w-4 cursor-pointer rounded border-line accent-[rgb(var(--accent))]"
                     />
                   </td>
 
-                  <td className="max-w-64 px-4 py-2.5">
+                  <td className="max-w-64 px-4 py-3">
                     <Link
                       href={`/prospects/${prospect.id}`}
                       className="block truncate font-medium text-ink hover:text-accent"
@@ -318,7 +322,7 @@ export function ProspectsTable({
                     )}
                   </td>
 
-                  <td className="max-w-72 px-4 py-2.5">
+                  <td className="max-w-72 px-4 py-3">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate text-ink">{prospect.display_company}</span>
                       {prospect.company_inferred && (
@@ -345,7 +349,7 @@ export function ProspectsTable({
                     </p>
                   </td>
 
-                  <td className="hidden max-w-56 px-4 py-2.5 lg:table-cell">
+                  <td className="hidden max-w-56 px-4 py-3 lg:table-cell">
                     {prospect.top_intent ? (
                       <span className="text-xs text-muted" title={prospect.top_intent}>
                         {prospect.top_intent.split(":").pop()?.trim()}
@@ -355,7 +359,7 @@ export function ProspectsTable({
                     )}
                   </td>
 
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-3">
                     <ProspectStatusBadge status={prospect.status} />
                   </td>
 
@@ -363,7 +367,7 @@ export function ProspectsTable({
                       someone stopped and returned to manual still has a
                       finished enrollment attached, and rendering that would
                       claim a sequence owns a prospect you took back. */}
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-3">
                     {prospect.pipeline_mode !== "automated" ? (
                       prospect.draft_count > 0 ? (
                         <Tag>

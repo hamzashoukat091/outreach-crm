@@ -1,14 +1,20 @@
 import type { DraftStatus, ProspectStatus } from "@/lib/prospect-types";
 
+/* Shared badge shape. A 1px inset ring is what stops a coloured pill from
+   looking like a flat highlight -- it gives the token an edge at any size. */
+export const BADGE_BASE =
+  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium " +
+  "ring-1 ring-inset whitespace-nowrap";
+
 const PROSPECT_TONE: Record<string, string> = {
-  new: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  drafted: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  approved: "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
-  replied: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  bounced: "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
-  not_interested: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  won: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
-  archived: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  new: "bg-slate-100 text-slate-700 ring-slate-600/15 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-slate-400/20",
+  drafted: "bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-950/60 dark:text-blue-300 dark:ring-blue-400/25",
+  approved: "bg-violet-50 text-violet-700 ring-violet-600/20 dark:bg-violet-950/60 dark:text-violet-300 dark:ring-violet-400/25",
+  replied: "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-400/25",
+  bounced: "bg-rose-50 text-rose-700 ring-rose-600/20 dark:bg-rose-950/60 dark:text-rose-300 dark:ring-rose-400/25",
+  not_interested: "bg-zinc-100 text-zinc-600 ring-zinc-500/15 dark:bg-zinc-800/60 dark:text-zinc-400 dark:ring-zinc-400/20",
+  won: "bg-emerald-100 text-emerald-800 ring-emerald-600/25 dark:bg-emerald-900/70 dark:text-emerald-200 dark:ring-emerald-400/30",
+  archived: "bg-zinc-100 text-zinc-600 ring-zinc-500/15 dark:bg-zinc-800/60 dark:text-zinc-400 dark:ring-zinc-400/20",
 };
 
 const LABEL: Record<string, string> = {
@@ -19,9 +25,7 @@ const LABEL: Record<string, string> = {
 export function ProspectStatusBadge({ status }: { status: ProspectStatus }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-        PROSPECT_TONE[status] ?? PROSPECT_TONE.new
-      }`}
+      className={`${BADGE_BASE} ${PROSPECT_TONE[status] ?? PROSPECT_TONE.new}`}
     >
       {LABEL[status] ?? status}
     </span>
@@ -29,10 +33,10 @@ export function ProspectStatusBadge({ status }: { status: ProspectStatus }) {
 }
 
 const DRAFT_TONE: Record<DraftStatus, string> = {
-  draft: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  approved: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  discarded: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  failed: "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
+  draft: "bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-950/60 dark:text-blue-300 dark:ring-blue-400/25",
+  approved: "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-400/25",
+  discarded: "bg-zinc-100 text-zinc-600 ring-zinc-500/15 dark:bg-zinc-800/60 dark:text-zinc-400 dark:ring-zinc-400/20",
+  failed: "bg-rose-50 text-rose-700 ring-rose-600/20 dark:bg-rose-950/60 dark:text-rose-300 dark:ring-rose-400/25",
 };
 
 export function DraftStatusBadge({ status }: { status: DraftStatus }) {
@@ -42,7 +46,7 @@ export function DraftStatusBadge({ status }: { status: DraftStatus }) {
     status === "approved" ? "sent" : status === "draft" ? "not sent" : status;
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${DRAFT_TONE[status]}`}
+      className={`${BADGE_BASE} ${DRAFT_TONE[status]}`}
     >
       {label}
     </span>
@@ -57,7 +61,7 @@ export function ContextBadge({ quality }: { quality: "rich" | "thin" | null }) {
     return (
       <span
         title="No verified company data was available. The email was written from the job title alone — check it before sending."
-        className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+        className={`${BADGE_BASE} bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-950/60 dark:text-amber-300 dark:ring-amber-400/25`}
       >
         limited context
       </span>
@@ -67,7 +71,7 @@ export function ContextBadge({ quality }: { quality: "rich" | "thin" | null }) {
   return (
     <span
       title="Written with the company description, industry, and size."
-      className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+      className={`${BADGE_BASE} bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-400/25`}
     >
       full context
     </span>
@@ -88,7 +92,7 @@ export function EmailStatusBadge({ status }: { status: string | null }) {
     return (
       <span
         title="This domain accepts mail to any address, so the mailbox couldn't be verified. Delivery isn't guaranteed."
-        className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+        className={`${BADGE_BASE} ml-2 bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-950/60 dark:text-amber-300 dark:ring-amber-400/25`}
       >
         catch-all
       </span>
@@ -99,7 +103,7 @@ export function EmailStatusBadge({ status }: { status: string | null }) {
     return (
       <span
         title="The mailbox was verified as deliverable."
-        className="ml-2 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+        className={`${BADGE_BASE} ml-2 bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-400/25`}
       >
         valid
       </span>
@@ -107,7 +111,7 @@ export function EmailStatusBadge({ status }: { status: string | null }) {
   }
 
   return (
-    <span className="ml-2 inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted">
+    <span className={`${BADGE_BASE} ml-2 bg-surface-2 text-muted ring-line`}>
       {status.replace("_", " ")}
     </span>
   );

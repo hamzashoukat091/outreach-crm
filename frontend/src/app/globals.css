@@ -5,32 +5,50 @@
 /* Colors are stored as space-separated RGB channels so Tailwind can apply
    opacity modifiers (e.g. ring-accent/20) via <alpha-value>. */
 :root {
-  --canvas: 247 248 250;
+  --canvas: 248 250 252;
   --surface: 255 255 255;
-  --surface-2: 242 244 247;
-  --line: 228 231 236;
-  --ink: 22 25 31;
-  --muted: 102 112 133;
+  --surface-2: 244 246 249;
+  --line: 226 232 240;
+  /* A second, softer rule weight. Full-strength lines everywhere is what makes
+     a dense table read as a spreadsheet rather than a product. */
+  --line-soft: 238 242 246;
+  --ink: 15 23 42;
+  --muted: 100 116 139;
   --accent: 67 56 202;
   --accent-soft: 238 242 255;
+  /* Accent as a solid fill under white text. In light mode the base accent is
+     already dark enough to serve both roles. */
+  --accent-solid: 67 56 202;
+  --shadow-hue: 15 23 42;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --canvas: 13 15 19;
-    --surface: 22 25 31;
-    --surface-2: 29 33 41;
-    --line: 42 47 58;
+    --canvas: 9 11 16;
+    --surface: 20 23 31;
+    --surface-2: 27 31 41;
+    --line: 39 44 56;
+    --line-soft: 31 36 46;
     --ink: 233 235 240;
-    --muted: 152 162 179;
-    --accent: 139 143 245;
-    --accent-soft: 30 31 61;
+    --muted: 148 158 176;
+    /* Lifted and desaturated: the light-mode indigo is too dense to read as a
+       highlight against a near-black canvas. Used for text and borders, where
+       it hits 6.7:1 on the surface. */
+    --accent: 145 149 250;
+    /* Buttons need the opposite: white on 145 149 250 is only 2.66:1. This
+       darker step carries white text at 4.91:1 and still reads as accent. */
+    --accent-solid: 91 95 235;
+    --accent-soft: 33 34 66;
+    --shadow-hue: 0 0 0;
   }
 }
 
 body {
   background: rgb(var(--canvas));
   color: rgb(var(--ink));
+  /* Tabular figures keep counts and dates from jittering as they update. */
+  font-feature-settings: "cv11", "ss01";
+  text-rendering: optimizeLegibility;
 }
 
 /* Keep long merge-field bodies readable in preview panes. */
@@ -39,29 +57,99 @@ body {
   line-height: 1.6;
 }
 
+/* Numbers in tables, stats and timers must not reflow as digits change. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@layer base {
+  /* One focus treatment for the whole app, and only for keyboard users --
+     mouse clicks leaving a ring on every button looks broken. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: rgb(var(--accent) / 0.22);
+  }
+
+  /* Scrollbars are part of the surface on a dense app. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--line)) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--line));
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--muted) / 0.5);
+    background-clip: content-box;
+  }
+}
+
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm
-      font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    @apply relative inline-flex cursor-pointer select-none items-center justify-center gap-2
+      rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-150 ease-out
+      active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-accent text-white hover:opacity-90;
+    /* A hairline of white at the top edge reads as a lit surface rather than a
+       flat fill -- the cheapest way to make a solid button look considered. */
+    @apply btn bg-accent-solid text-white shadow-btn
+      before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px
+      before:rounded-t-lg before:bg-white/25
+      hover:brightness-110 hover:shadow-btn-hover active:brightness-95;
   }
   .btn-secondary {
-    @apply btn border border-line bg-surface text-ink hover:bg-surface-2;
+    @apply btn border border-line bg-surface text-ink shadow-btn
+      hover:border-line-strong hover:bg-surface-2 hover:shadow-btn-hover;
   }
   .btn-ghost {
     @apply btn text-muted hover:bg-surface-2 hover:text-ink;
   }
+  .btn-danger {
+    @apply btn bg-rose-600 text-white shadow-btn hover:brightness-110;
+  }
   .card {
     @apply rounded-xl border border-line bg-surface shadow-card;
   }
+  /* Opt-in lift for cards that are themselves links or buttons. */
+  .card-interactive {
+    @apply card cursor-pointer transition-all duration-200 ease-out
+      hover:-translate-y-0.5 hover:border-line-strong hover:shadow-card-hover;
+  }
   .input {
     @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink
-      outline-none transition placeholder:text-muted focus:border-accent
-      focus:ring-2 focus:ring-accent/20;
+      shadow-inset outline-none transition duration-150 placeholder:text-muted
+      hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/[0.12];
   }
   .label {
     @apply mb-1.5 block text-sm font-medium text-ink;
+  }
+  /* Section eyebrow: small, spaced, quiet. Used above card groups. */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted;
+  }
+}
+
+/* Respect the OS setting. Everything above degrades to instant, not broken. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

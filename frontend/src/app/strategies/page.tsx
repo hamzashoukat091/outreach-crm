@@ -3,6 +3,7 @@ import { api } from "@/lib/api";
 import { NewStrategyButton, StrategyCard } from "@/components/strategy-editor";
 import { SenderProfileEditor } from "@/components/sender-profile-editor";
 import { EmptyState, PageHeader } from "@/components/ui";
+import { ApiError } from "@/components/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -25,12 +26,7 @@ export default async function StrategiesPage({
     ]);
   } catch {
     return (
-      <div className="card">
-        <EmptyState
-          title="Can't reach the API"
-          description="The backend isn't responding. Check `docker compose ps`."
-        />
-      </div>
+      <ApiError what="Strategies" />
     );
   }
 

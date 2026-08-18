@@ -1,5 +1,6 @@
 import type { AutomationSequence, EnrollmentState, SequenceStep } from "@/lib/types";
 import type { ReplySituation } from "@/lib/prospect-types";
+import { BADGE_BASE } from "@/components/prospect-ui";
 
 /** Live enrollment state in words. "Enrolled" always means right now --
  *  finished runs are named separately, or the two numbers look contradictory
@@ -26,18 +27,18 @@ export function enrollmentSummary(sequence: AutomationSequence): string {
 }
 
 const ENROLLMENT_TONE: Record<EnrollmentState, string> = {
-  active: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  paused: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-  replied: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  stopped: "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
-  bounced: "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
-  completed: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  active: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 ring-emerald-600/20 dark:ring-emerald-400/25",
+  paused: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-400/25",
+  replied: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 ring-blue-600/20 dark:ring-blue-400/25",
+  stopped: "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 ring-rose-600/20 dark:ring-rose-400/25",
+  bounced: "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 ring-rose-600/20 dark:ring-rose-400/25",
+  completed: "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 ring-slate-600/15 dark:ring-slate-400/20",
 };
 
 export function EnrollmentStateBadge({ state }: { state: EnrollmentState }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+      className={`${BADGE_BASE} ${
         ENROLLMENT_TONE[state] ?? ENROLLMENT_TONE.completed
       }`}
     >
@@ -47,22 +48,22 @@ export function EnrollmentStateBadge({ state }: { state: EnrollmentState }) {
 }
 
 const SITUATION_TONE: Record<ReplySituation, string> = {
-  interested: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  question: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  objection: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-  not_now: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-  referral: "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
-  not_interested: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  unsubscribe: "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
-  auto_reply: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  unclear: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  interested: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 ring-emerald-600/20 dark:ring-emerald-400/25",
+  question: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 ring-blue-600/20 dark:ring-blue-400/25",
+  objection: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-400/25",
+  not_now: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-400/25",
+  referral: "bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 ring-violet-600/20 dark:ring-violet-400/25",
+  not_interested: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400 ring-zinc-500/15 dark:ring-zinc-400/20",
+  unsubscribe: "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 ring-rose-600/20 dark:ring-rose-400/25",
+  auto_reply: "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 ring-slate-600/15 dark:ring-slate-400/20",
+  unclear: "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 ring-slate-600/15 dark:ring-slate-400/20",
 };
 
 export function SituationBadge({ situation }: { situation: ReplySituation | null }) {
   if (!situation) return null;
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+      className={`${BADGE_BASE} ${
         SITUATION_TONE[situation] ?? SITUATION_TONE.unclear
       }`}
     >
@@ -72,21 +73,21 @@ export function SituationBadge({ situation }: { situation: ReplySituation | null
 }
 
 const MESSAGE_STATE_TONE: Record<string, string> = {
-  sent: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  pending_approval: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-  queued: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  scheduled: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  draft: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  approved: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  rejected: "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
-  failed: "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
-  received: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  sent: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 ring-emerald-600/20 dark:ring-emerald-400/25",
+  pending_approval: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 ring-amber-600/20 dark:ring-amber-400/25",
+  queued: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 ring-blue-600/20 dark:ring-blue-400/25",
+  scheduled: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 ring-blue-600/20 dark:ring-blue-400/25",
+  draft: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 ring-blue-600/20 dark:ring-blue-400/25",
+  approved: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 ring-emerald-600/20 dark:ring-emerald-400/25",
+  rejected: "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 ring-rose-600/20 dark:ring-rose-400/25",
+  failed: "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 ring-rose-600/20 dark:ring-rose-400/25",
+  received: "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 ring-slate-600/15 dark:ring-slate-400/20",
 };
 
 export function MessageStateBadge({ state }: { state: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+      className={`${BADGE_BASE} ${
         MESSAGE_STATE_TONE[state] ??
         "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
       }`}
@@ -104,7 +105,7 @@ export function PipelineModeBadge({ mode }: { mode: "manual" | "automated" }) {
           ? "The automation engine owns this prospect's outreach."
           : "You send emails to this prospect by hand."
       }
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+      className={`${BADGE_BASE} ${
         mode === "automated"
           ? "bg-accent-soft text-accent"
           : "bg-surface-2 text-muted"

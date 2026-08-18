@@ -42,7 +42,11 @@ const ALL_SITUATIONS: ReplySituation[] = [
   "unclear",
 ];
 
-/** Card shell shared by every section: title, body, save/reset footer. */
+/** Card shell shared by every section: title, body, save/reset footer.
+ *
+ *  Collapsible, because the page is ~50 inputs across four screens and most
+ *  of them (SMTP, IMAP) are set once and never touched again. `defaultOpen`
+ *  decides what greets you: the things you actually tune. */
 function Section({
   title,
   description,
@@ -51,6 +55,8 @@ function Section({
   onReset,
   pending,
   saveLabel = "Save",
+  defaultOpen = true,
+  summary,
 }: {
   title: string;
   description?: string;
@@ -59,33 +65,71 @@ function Section({
   onReset?: () => void;
   pending: boolean;
   saveLabel?: string;
+  defaultOpen?: boolean;
+  summary?: string;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+
   return (
-    <section className="card p-5">
-      <h2 className="text-sm font-semibold text-ink">{title}</h2>
-      {description && <p className="mt-1 text-xs text-muted">{description}</p>}
-      <div className="mt-4 space-y-4">{children}</div>
-      {(onSave || onReset) && (
-        <div
-          className={`mt-4 flex items-center gap-2 ${
-            // A lone reset link doesn't need a rule above it -- the divider
-            // reads as a footer only when there's a primary action to divide.
-            onSave ? "border-t border-line pt-4" : "pt-1"
-          }`}
-        >
-          {onSave && (
-            <button onClick={onSave} disabled={pending} className="btn-primary h-9">
-              {pending ? "Saving…" : saveLabel}
-            </button>
+    <section className="card overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-left
+          transition-colors hover:bg-surface-2/60"
+      >
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm font-semibold text-ink">{title}</h2>
+          {/* Collapsed, the section still has to say what it is set to --
+              otherwise closing it just hides information. */}
+          {!open && summary ? (
+            <p className="mt-0.5 truncate text-xs text-muted">{summary}</p>
+          ) : (
+            description && <p className="mt-0.5 text-xs text-muted">{description}</p>
           )}
-          {onReset && (
-            <button
-              onClick={onReset}
-              disabled={pending}
-              className="btn-ghost ml-auto h-9 text-xs"
+        </div>
+        <svg
+          viewBox="0 0 20 20"
+          aria-hidden
+          className={`h-4 w-4 shrink-0 text-muted transition-transform duration-200
+            ${open ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M5.5 8l4.5 4.5L14.5 8" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="animate-fade-in border-t border-line-soft px-5 pb-5 pt-4">
+          <div className="space-y-4">{children}</div>
+          {(onSave || onReset) && (
+            <div
+              className={`mt-4 flex items-center gap-2 ${
+                // A lone reset link doesn't need a rule above it -- the divider
+                // reads as a footer only when there's a primary action to divide.
+                onSave ? "border-t border-line pt-4" : "pt-1"
+              }`}
             >
-              Reset to defaults
-            </button>
+              {onSave && (
+                <button onClick={onSave} disabled={pending} className="btn-primary h-9">
+                  {pending ? "Saving…" : saveLabel}
+                </button>
+              )}
+              {onReset && (
+                <button
+                  onClick={onReset}
+                  disabled={pending}
+                  className="btn-ghost ml-auto h-9 text-xs"
+                >
+                  Reset to defaults
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -585,6 +629,12 @@ function SmtpSection({ settings }: { settings: AutomationSettings }) {
       <Section
         title="Outbound email (SMTP)"
         description="Where automated emails are actually sent from."
+        defaultOpen={false}
+        summary={
+          form.smtp_host
+            ? `${form.smtp_host}:${form.smtp_port} · ${form.from_address || "no from address"}`
+            : "Not configured"
+        }
         pending={pending}
         onSave={submit}
       >
@@ -711,6 +761,10 @@ function ImapSection({ settings }: { settings: AutomationSettings }) {
       <Section
         title="Inbound email (IMAP)"
         description="Where replies are read from."
+        defaultOpen={false}
+        summary={
+          form.imap_host ? `${form.imap_host}:${form.imap_port}` : "Not configured"
+        }
         pending={pending}
         onSave={submit}
       >
@@ -850,6 +904,10 @@ function SenderFactsSection({ facts }: { facts: SenderFacts }) {
       <Section
         title="Sender facts"
         description="Claude answers questions in replies ONLY from these facts. Anything not covered gets held for your approval."
+        defaultOpen={false}
+        summary={`${Object.values(form).filter((v) => v.trim()).length} of ${
+          Object.keys(form).length
+        } facts filled in`}
         pending={pending}
         onSave={submit}
         saveLabel="Save facts"

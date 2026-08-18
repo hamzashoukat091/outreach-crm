@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { AutomationSettingsPanel } from "@/components/automation-settings";
-import { EmptyState, PageHeader, formatDate } from "@/components/ui";
+import { PageHeader, formatDate } from "@/components/ui";
+import { ApiError } from "@/components/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +20,7 @@ export default async function SettingsPage() {
     ]);
   } catch {
     return (
-      <div className="card">
-        <EmptyState
-          title="Can't reach the API"
-          description="The backend isn't responding. Check `docker compose ps`."
-        />
-      </div>
+      <ApiError what="Settings" />
     );
   }
 

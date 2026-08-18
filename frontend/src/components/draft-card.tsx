@@ -119,7 +119,9 @@ export function DraftCard({
       <div
         // A sent email sits in the same list as ones still waiting, so the
         // difference has to be visible before reading the badge.
-        className={`card p-5 ${draft.status === "discarded" ? "opacity-60" : ""} ${
+        className={`card p-5 transition-shadow duration-200 hover:shadow-card-hover ${
+          draft.status === "discarded" ? "opacity-60" : ""
+        } ${
           sent ? "border-l-2 border-l-emerald-500/60" : ""
         }`}
       >
@@ -162,9 +164,14 @@ export function DraftCard({
             />
           </div>
         ) : (
-          <div className="rounded-lg bg-surface-2 p-4">
-            <p className="text-sm font-medium text-ink">{subject}</p>
-            <p className="prose-email mt-3 text-sm text-muted">{body}</p>
+          <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-inset">
+            <p className="border-b border-line-soft bg-surface-2/50 px-4 py-2.5 text-sm
+              font-semibold text-ink">
+              {subject}
+            </p>
+            <p className="prose-email px-4 py-3.5 text-[13.5px] leading-[1.65] text-ink/85">
+              {body}
+            </p>
           </div>
         )}
 

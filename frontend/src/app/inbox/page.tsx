@@ -2,6 +2,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { InboxView } from "@/components/inbox-view";
 import { EmptyState, PageHeader } from "@/components/ui";
+import { ApiError } from "@/components/api-error";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +12,7 @@ export default async function InboxPage() {
     items = await api.automationInbox();
   } catch {
     return (
-      <div className="card">
-        <EmptyState
-          title="Can't reach the API"
-          description="The backend isn't responding. Check `docker compose ps`."
-        />
-      </div>
+      <ApiError what="The inbox" />
     );
   }
 

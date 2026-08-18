@@ -62,7 +62,8 @@ export function TemplatePicker({ onClose }: { onClose: () => void }) {
             {templates.map((template) => (
               <div
                 key={template.key}
-                className="flex flex-col rounded-xl border border-line p-4"
+                className="flex flex-col rounded-xl border border-line p-4 transition-all
+                  duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-card"
               >
                 <div className="flex items-baseline justify-between gap-2">
                   <h3 className="text-sm font-medium text-ink">{template.name}</h3>
