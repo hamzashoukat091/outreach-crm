@@ -316,3 +316,62 @@ def test_empty_subject_falls_back_rather_than_shipping_blank():
 
     assert subject
     assert subject != ""
+
+
+def test_credit_exhaustion_says_so_instead_of_just_400():
+    """A spent balance and a bad request are both 400s. The user needs to
+    know which one happened -- 'Anthropic API error (400)' is unactionable."""
+    import anthropic
+    import httpx
+
+    from app.services.generator import _status_message
+
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    response = httpx.Response(
+        400,
+        request=request,
+        json={
+            "error": {
+                "type": "invalid_request_error",
+                "message": "Your credit balance is too low to access the "
+                "Anthropic API.",
+            }
+        },
+    )
+    exc = anthropic.APIStatusError("boom", response=response, body=None)
+
+    message = _status_message(exc)
+
+    assert "credit balance is too low" in message.lower()
+    assert "billing" in message.lower()
+
+
+def test_other_400s_keep_the_real_reason():
+    import anthropic
+    import httpx
+
+    from app.services.generator import _status_message
+
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    response = httpx.Response(
+        400,
+        request=request,
+        json={"error": {"message": "max_tokens must be greater than 0"}},
+    )
+    exc = anthropic.APIStatusError("boom", response=response, body=None)
+
+    assert "max_tokens must be greater than 0" in _status_message(exc)
+
+
+def test_a_non_json_body_still_produces_a_message():
+    """An HTML error page from a proxy must not mask the failure."""
+    import anthropic
+    import httpx
+
+    from app.services.generator import _status_message
+
+    request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    response = httpx.Response(502, request=request, text="<html>bad gateway</html>")
+    exc = anthropic.APIStatusError("boom", response=response, body=None)
+
+    assert "502" in _status_message(exc)

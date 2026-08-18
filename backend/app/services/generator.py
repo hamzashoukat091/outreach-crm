@@ -229,6 +229,33 @@ def build_prompt(
     return system, "\n".join(parts)
 
 
+def _status_message(exc: anthropic.APIStatusError) -> str:
+    """Turn an API status error into something a user can act on.
+
+    Anthropic puts the actionable part in the body, not the status code: a
+    spent credit balance and a malformed request are both plain 400s, and
+    "Anthropic API error (400)" tells nobody which one happened.
+    """
+    detail = ""
+    try:
+        body = exc.response.json()
+        detail = str((body.get("error") or {}).get("message") or "").strip()
+    except Exception:  # noqa: BLE001 - a non-JSON body must not mask the error
+        detail = (getattr(exc, "message", "") or "").strip()
+
+    lowered = detail.lower()
+    if "credit balance" in lowered or "billing" in lowered:
+        return (
+            "Anthropic credit balance is too low to generate. Top up at "
+            "console.anthropic.com/settings/billing, then retry."
+        )
+    if exc.status_code == 529 or "overloaded" in lowered:
+        return "Anthropic is overloaded right now. Retry in a moment."
+    if detail:
+        return f"Anthropic API error ({exc.status_code}): {detail}"
+    return f"Anthropic API error ({exc.status_code})."
+
+
 def call_claude(system: str, user_message: str, max_tokens: int = 1200) -> dict[str, Any]:
     """One Claude call with the shared error mapping.
 
@@ -258,7 +285,10 @@ def call_claude(system: str, user_message: str, max_tokens: int = 1200) -> dict[
     except anthropic.RateLimitError as exc:
         raise GenerationError("Rate limited by Anthropic. Wait a moment and retry.") from exc
     except anthropic.APIStatusError as exc:
-        raise GenerationError(f"Anthropic API error ({exc.status_code}).") from exc
+        # Anthropic puts the actionable part in the body, not the status: a
+        # spent credit balance and a malformed request are both plain 400s,
+        # and "Anthropic API error (400)" tells nobody which one happened.
+        raise GenerationError(_status_message(exc)) from exc
     except anthropic.APIConnectionError as exc:
         raise GenerationError("Could not reach the Anthropic API. Check connectivity.") from exc
     except Exception as exc:  # noqa: BLE001
