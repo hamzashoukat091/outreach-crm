@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.db import get_db
@@ -157,6 +157,32 @@ def approve_draft(draft_id: uuid.UUID, db: Session = Depends(get_db)):
     return _out(draft)
 
 
+def _revert_if_no_live_drafts(db: Session, draft: EmailDraft) -> None:
+    """Undo the 'drafted' status when the last live draft goes away.
+
+    Generating moves a prospect new -> drafted, so removing the draft has to
+    move it back, or the prospect claims a draft that no longer exists: the
+    pipeline chart counts them as drafted forever and the list offers to
+    review nothing. Only 'drafted' is reverted -- a prospect who was approved,
+    replied or won has moved past this and must not regress.
+    """
+    prospect = draft.prospect
+    if not prospect or prospect.status != ProspectStatus.drafted:
+        return
+
+    live = db.scalar(
+        select(func.count())
+        .select_from(EmailDraft)
+        .where(
+            EmailDraft.prospect_id == prospect.id,
+            EmailDraft.id != draft.id,
+            EmailDraft.status != DraftStatus.discarded,
+        )
+    )
+    if not live:
+        prospect.status = ProspectStatus.new
+
+
 @router.post("/{draft_id}/discard", response_model=DraftOut)
 def discard_draft(draft_id: uuid.UUID, db: Session = Depends(get_db)):
     draft = _get(db, draft_id)
@@ -165,6 +191,7 @@ def discard_draft(draft_id: uuid.UUID, db: Session = Depends(get_db)):
             status.HTTP_409_CONFLICT, "This draft was already sent and can't be discarded"
         )
     draft.status = DraftStatus.discarded
+    _revert_if_no_live_drafts(db, draft)
     db.commit()
     db.refresh(draft)
     return _out(draft)
@@ -173,5 +200,6 @@ def discard_draft(draft_id: uuid.UUID, db: Session = Depends(get_db)):
 @router.delete("/{draft_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_draft(draft_id: uuid.UUID, db: Session = Depends(get_db)):
     draft = _get(db, draft_id)
+    _revert_if_no_live_drafts(db, draft)
     db.delete(draft)
     db.commit()
