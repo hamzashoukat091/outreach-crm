@@ -2,6 +2,7 @@ import { api } from "@/lib/api";
 import { ApprovalCard } from "@/components/approval-card";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { ApiError } from "@/components/api-error";
+import { Logo } from "@/components/logo";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export default async function ApprovalsPage() {
       {approvals.length === 0 ? (
         <div className="card">
           <EmptyState
+            icon={<Logo className="h-5 w-5" />}
             title="Nothing waiting"
             description="Held replies appear here."
           />
