@@ -75,10 +75,24 @@ export default async function DashboardPage() {
               : undefined
           }
         />
+        {/* A rate over zero sends is not 0% success, it is no data. Saying
+            "0%" next to an engine that has never sent reads as failure. */}
         <StatCard
           label="Reply rate"
-          value={automation ? `${automation.reply_rate}%` : "—"}
-          hint={automation ? `${automation.replies_received} replies` : undefined}
+          value={
+            !automation
+              ? "—"
+              : automation.total_sent === 0
+              ? "—"
+              : `${automation.reply_rate}%`
+          }
+          hint={
+            !automation
+              ? undefined
+              : automation.total_sent === 0
+              ? "no automated sends yet"
+              : `${automation.replies_received} of ${automation.total_sent} sent`
+          }
         />
       </div>
 
@@ -142,7 +156,11 @@ export default async function DashboardPage() {
                       {seq.replied}
                     </td>
                     <td className="py-2.5 text-right tabular-nums text-ink">
-                      {seq.reply_rate}%
+                      {seq.enrolled === 0 ? (
+                        <span className="text-muted">—</span>
+                      ) : (
+                        `${seq.reply_rate}%`
+                      )}
                     </td>
                   </tr>
                 ))}
