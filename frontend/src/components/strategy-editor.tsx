@@ -355,9 +355,19 @@ export function StrategyCard({ strategy }: { strategy: Strategy }) {
           </div>
         </div>
 
-        <pre className="prose-email mt-4 max-h-32 overflow-hidden rounded-lg bg-surface-2 p-3 text-xs text-muted">
-          {strategy.instructions}
-        </pre>
+        {/* Collapsed by default. Eight strategies, each a page of prompt,
+            turned this list into three screens of text you scroll past to
+            find the one you want -- and it was clipped mid-sentence with no
+            way to read the rest. */}
+        <details className="group mt-4">
+          <summary className="cursor-pointer list-none text-xs text-accent hover:underline">
+            <span className="group-open:hidden">Show the prompt</span>
+            <span className="hidden group-open:inline">Hide the prompt</span>
+          </summary>
+          <pre className="prose-email mt-2 max-h-96 overflow-y-auto rounded-lg bg-surface-2 p-3 text-xs text-muted">
+            {strategy.instructions}
+          </pre>
+        </details>
       </div>
 
       <Toast state={toast} />

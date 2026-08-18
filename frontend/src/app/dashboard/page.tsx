@@ -29,6 +29,35 @@ export default async function DashboardPage() {
     );
   }
 
+  // Ordered by urgency: something waiting on you, then something stalled,
+  // then the obvious first move. The first match wins.
+  const nextStep = (() => {
+    if (automation && automation.pending_approvals > 0) {
+      return {
+        text: `${automation.pending_approvals} repl${
+          automation.pending_approvals === 1 ? "y is" : "ies are"
+        } written and waiting for you to approve.`,
+        cta: "Review them",
+        href: "/approvals",
+      };
+    }
+    if (!prospects || prospects.total_prospects === 0) {
+      return {
+        text: "No prospects yet. Import a CSV to get started.",
+        cta: "Go to prospects",
+        href: "/prospects",
+      };
+    }
+    if (automation && automation.active_enrollments === 0) {
+      return {
+        text: "Nothing is running. Enroll prospects in a sequence to start automated outreach.",
+        cta: "Open sequences",
+        href: "/sequences",
+      };
+    }
+    return null;
+  })();
+
   return (
     <>
       <PageHeader
@@ -55,6 +84,21 @@ export default async function DashboardPage() {
             className="shrink-0 font-medium text-amber-900 underline dark:text-amber-200"
           >
             Review in Settings
+          </Link>
+        </div>
+      )}
+
+      {/* Numbers describe the state; they do not say what to do about it.
+          One line naming the single most useful next action, chosen from what
+          is actually true right now. */}
+      {nextStep && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-2/60 px-4 py-3 text-sm">
+          <span className="text-ink">{nextStep.text}</span>
+          <Link
+            href={nextStep.href}
+            className="shrink-0 font-medium text-accent hover:underline"
+          >
+            {nextStep.cta} →
           </Link>
         </div>
       )}
@@ -178,11 +222,11 @@ export default async function DashboardPage() {
           ) : (
             <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div>
-                <dt className="text-xs text-muted">Drafts generated</dt>
+                <dt className="text-xs text-muted">Emails written</dt>
                 <dd className="mt-0.5 tabular-nums text-ink">{prospects.total_drafts}</dd>
               </div>
               <div>
-                <dt className="text-xs text-muted">Sent manually</dt>
+                <dt className="text-xs text-muted">Copied &amp; sent</dt>
                 <dd className="mt-0.5 tabular-nums text-ink">{prospects.approved_drafts}</dd>
               </div>
               <div>
