@@ -146,7 +146,7 @@ export function EnrollmentsTable({
                             setConfirming(confirming === row.id ? null : row.id)
                           }
                           disabled={pending}
-                          className="btn-ghost h-8 text-xs text-rose-600"
+                          className="btn-danger h-8 text-xs"
                         >
                           Stop
                         </button>

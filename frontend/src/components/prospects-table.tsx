@@ -18,6 +18,7 @@ import { EmptyState, Tag, formatDate } from "@/components/ui";
 import { EnrollmentStateBadge } from "@/components/automation-ui";
 import { ProspectStatusBadge } from "@/components/prospect-ui";
 import { Toast, useToast } from "@/components/toast";
+import { SendIcon } from "@/components/send-icon";
 
 export function ProspectsTable({
   prospects,
@@ -221,9 +222,10 @@ export function ProspectsTable({
                 <button
                   onClick={handoff}
                   disabled={pending}
-                  className="btn-secondary h-9"
+                  className="btn-send h-9"
                   title="Let the automation engine run outreach for the selected prospects"
                 >
+                  <SendIcon />
                   Hand off
                 </button>
               )}
@@ -237,7 +239,7 @@ export function ProspectsTable({
             </>
           )}
 
-          <button onClick={remove} disabled={pending} className="btn-ghost h-9 text-rose-600">
+          <button onClick={remove} disabled={pending} className="btn-danger h-9">
             Delete
           </button>
           <button onClick={() => setSelected(new Set())} className="btn-ghost h-9">

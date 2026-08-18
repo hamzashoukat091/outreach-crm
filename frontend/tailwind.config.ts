@@ -19,6 +19,10 @@ const config: Config = {
         "accent-soft": "rgb(var(--accent-soft) / <alpha-value>)",
         // Fill weight for solid buttons -- see --accent-solid in globals.css.
         "accent-solid": "rgb(var(--accent-solid) / <alpha-value>)",
+        // Reserved for irreversible sends -- see --send in globals.css.
+        send: "rgb(var(--send) / <alpha-value>)",
+        "send-soft": "rgb(var(--send-soft) / <alpha-value>)",
+        "send-ink": "rgb(var(--send-ink) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],

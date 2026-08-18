@@ -166,7 +166,7 @@ function SequenceCard({ sequence }: { sequence: AutomationSequence }) {
             <button
               onClick={remove}
               disabled={pending}
-              className="btn-ghost h-9 text-rose-600"
+              className="btn-danger h-9"
             >
               Delete
             </button>

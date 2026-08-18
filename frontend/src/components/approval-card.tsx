@@ -12,6 +12,7 @@ import type { ApprovalItem } from "@/lib/types";
 import { SituationBadge } from "@/components/automation-ui";
 import { formatDate } from "@/components/ui";
 import { Toast, useToast } from "@/components/toast";
+import { SendIcon } from "@/components/send-icon";
 
 export function ApprovalCard({ item }: { item: ApprovalItem }) {
   const { message, trigger } = item;
@@ -120,7 +121,8 @@ export function ApprovalCard({ item }: { item: ApprovalItem }) {
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button onClick={approve} disabled={pending} className="btn-primary h-9">
+          <button onClick={approve} disabled={pending} className="btn-send h-9">
+            <SendIcon />
             {pending ? "Working…" : "Approve & send"}
           </button>
           <button onClick={regenerate} disabled={pending} className="btn-secondary h-9">
@@ -129,7 +131,7 @@ export function ApprovalCard({ item }: { item: ApprovalItem }) {
           <button
             onClick={reject}
             disabled={pending}
-            className="btn-ghost ml-auto h-9 text-rose-600"
+            className="btn-danger ml-auto h-9"
           >
             Reject
           </button>

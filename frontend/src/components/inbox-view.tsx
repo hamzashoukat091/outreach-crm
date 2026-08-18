@@ -14,6 +14,7 @@ import type { AutomationMessage, EnrollmentDetail, InboxItem } from "@/lib/types
 import { SituationBadge } from "@/components/automation-ui";
 import { formatDate } from "@/components/ui";
 import { Toast, useToast } from "@/components/toast";
+import { SendIcon } from "@/components/send-icon";
 
 // An outbound bubble labelled "Sent" when the message was cancelled or is
 // still waiting claims mail went out that never did. Say the actual state.
@@ -160,7 +161,8 @@ function PendingApprovalCard({
           className="input mt-2 resize-y text-sm"
         />
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button onClick={approve} disabled={pending} className="btn-primary h-9">
+          <button onClick={approve} disabled={pending} className="btn-send h-9">
+            <SendIcon />
             {pending ? "Working…" : "Approve & send"}
           </button>
           <button onClick={regenerate} disabled={pending} className="btn-secondary h-9">
@@ -169,7 +171,7 @@ function PendingApprovalCard({
           <button
             onClick={reject}
             disabled={pending}
-            className="btn-ghost ml-auto h-9 text-rose-600"
+            className="btn-danger ml-auto h-9"
           >
             Reject
           </button>

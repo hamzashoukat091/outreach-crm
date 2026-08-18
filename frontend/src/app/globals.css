@@ -19,6 +19,14 @@
   /* Accent as a solid fill under white text. In light mode the base accent is
      already dark enough to serve both roles. */
   --accent-solid: 67 56 202;
+  /* Reserved for actions that put mail in front of a real person. Teal, not
+     another indigo: it has to be legible as a different *kind* of action at a
+     glance, not a louder version of the same one. */
+  --send: 13 118 128;
+  --send-soft: 236 253 250;
+  /* Text weight. In light mode the fill colour already reads on the soft
+     tint, so both roles share a value. */
+  --send-ink: 13 118 128;
   --shadow-hue: 15 23 42;
 }
 
@@ -39,6 +47,9 @@
        darker step carries white text at 4.91:1 and still reads as accent. */
     --accent-solid: 91 95 235;
     --accent-soft: 33 34 66;
+    --send: 15 118 110;
+    --send-soft: 8 45 48;
+    --send-ink: 45 212 191;
     --shadow-hue: 0 0 0;
   }
 }
@@ -117,8 +128,20 @@ body {
   .btn-ghost {
     @apply btn text-muted hover:bg-surface-2 hover:text-ink;
   }
+  /* Sends an email to a real person. The one button class in the app whose
+     effect cannot be undone from inside the app. */
+  .btn-send {
+    @apply btn bg-send text-white shadow-btn
+      before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px
+      before:rounded-t-lg before:bg-white/25
+      hover:brightness-110 hover:shadow-btn-hover active:brightness-95;
+  }
+  /* Destructive actions carried real weight nowhere: delete was a ghost button
+     with red text, quieter on the page than generating a draft. */
   .btn-danger {
-    @apply btn bg-rose-600 text-white shadow-btn hover:brightness-110;
+    @apply btn border border-rose-500/30 bg-rose-50 text-rose-700 shadow-btn
+      hover:border-rose-500/50 hover:bg-rose-100
+      dark:border-rose-500/25 dark:bg-rose-950/50 dark:text-rose-300 dark:hover:bg-rose-950;
   }
   .card {
     @apply rounded-xl border border-line bg-surface shadow-card;

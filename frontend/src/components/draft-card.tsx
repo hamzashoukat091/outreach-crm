@@ -226,7 +226,7 @@ export function DraftCard({
             <button
               onClick={discard}
               disabled={pending}
-              className="btn-ghost ml-auto h-9 text-rose-600"
+              className="btn-danger ml-auto h-9"
             >
               Discard
             </button>

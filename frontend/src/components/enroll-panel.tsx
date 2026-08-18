@@ -14,6 +14,7 @@ import {
   windowSummary,
 } from "@/lib/schedule-preview";
 import { Toast, useToast } from "@/components/toast";
+import { SendIcon } from "@/components/send-icon";
 
 export function EnrollPanel({
   sequenceId,
@@ -374,8 +375,9 @@ export function EnrollPanel({
             !hasSteps ||
             (mode === "send_at" && !sendAt)
           }
-          className="btn-primary mt-4 w-full"
+          className="btn-send mt-4 w-full"
         >
+          <SendIcon />
           {pending
             ? "Enrolling…"
             : `Enroll ${selectable.length || ""} prospect${
