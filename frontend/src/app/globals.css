@@ -114,11 +114,7 @@ body {
       active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
-    /* A hairline of white at the top edge reads as a lit surface rather than a
-       flat fill -- the cheapest way to make a solid button look considered. */
     @apply btn bg-accent-solid text-white shadow-btn
-      before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px
-      before:rounded-t-lg before:bg-white/25
       hover:brightness-110 hover:shadow-btn-hover active:brightness-95;
   }
   .btn-secondary {
@@ -132,8 +128,6 @@ body {
      effect cannot be undone from inside the app. */
   .btn-send {
     @apply btn bg-send text-white shadow-btn
-      before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px
-      before:rounded-t-lg before:bg-white/25
       hover:brightness-110 hover:shadow-btn-hover active:brightness-95;
   }
   /* Destructive actions carried real weight nowhere: delete was a ghost button
