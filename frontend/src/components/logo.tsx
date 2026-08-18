@@ -1,41 +1,59 @@
-/** The Outreach mark: a sequence path that ends in a send.
+/** The Outreach mark.
  *
- *  Three nodes joined by an S-curve, with a paper plane leaving the last one.
- *  It is the product's own data model -- sequence, steps, send -- rather than
- *  a generic messaging glyph.
+ *  Three nodes threaded by an S-path, with a paper plane leaving the top node
+ *  -- sequence, steps, send.
  *
- *  Geometry is tuned for the sizes it actually renders at. The first draft put
- *  the curve 7.5 units from the middle node, which closed to a 0.25px gap at
- *  16px and merged into a blob in the browser tab; the arms now clear each
- *  node by 9 units, holding a ~0.75px gap at favicon size.
+ *  Traced from the source artwork rather than redrawn by eye: node centres,
+ *  radii (7.7 ring / 2.7 core) and the 3.3-unit stroke are measured off the
+ *  original on a 64 grid. An earlier pass here reinvented the geometry to win
+ *  a sub-pixel gap at favicon size and lost the shape doing it; small-size
+ *  legibility belongs to the simplified icon.svg, not to this file.
  *
- *  Colour comes from currentColor so one asset serves every context: white
- *  inside the sidebar tile, accent on a plain background, correct in both
- *  themes with no second file to keep in sync. */
-export function Logo({ className = "h-5 w-5" }: { className?: string }) {
+ *  Draws in currentColor so one asset serves the sidebar tile (white) and
+ *  plain backgrounds (accent) in both themes. `coreClassName` tints the node
+ *  centres, which are lighter than the ring in the source. */
+export function Logo({
+  className = "h-5 w-5",
+  coreClassName = "text-white/55",
+}: {
+  className?: string;
+  coreClassName?: string;
+}) {
   return (
     <svg
-      viewBox="0 0 48 48"
+      viewBox="10.5 7.5 47.5 49.5"
       className={className}
       fill="none"
       stroke="currentColor"
-      strokeWidth="4.5"
+      strokeWidth="3.3"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
     >
-      {/* Bottom node sweeps up through the middle to the top-right send. */}
-      <path d="M10 39h13a9 9 0 000-18h-4a9 9 0 010-18h12" />
-      <circle cx="10" cy="39" r="4.5" fill="currentColor" stroke="none" />
-      <circle cx="23" cy="30" r="4.5" fill="currentColor" stroke="none" />
-      <circle cx="19" cy="12" r="4.5" fill="currentColor" stroke="none" />
-      {/* Filled plane: holds its shape once strokes get thin. */}
+      {/* Bottom-left node runs right, doubles back left through the middle
+          node, then right again to the top node. The two returns are what
+          make the S. */}
+      <path d="M17.7 49.6H36.9a6 6 0 000-12H24a7.1 7.1 0 010-14.2h4.2" />
+
+      {/* Nodes: solid ring with a lighter core. */}
+      <circle cx="17.7" cy="49.6" r="5.15" fill="currentColor" stroke="none" />
+      <circle cx="17.7" cy="49.6" r="2.7" className={coreClassName} fill="currentColor" stroke="none" />
+
+      <circle cx="35.1" cy="37.6" r="5.15" fill="currentColor" stroke="none" />
+      <circle cx="35.1" cy="37.6" r="2.7" className={coreClassName} fill="currentColor" stroke="none" />
+
+      <circle cx="28.2" cy="23.4" r="5.15" fill="currentColor" stroke="none" />
+      <circle cx="28.2" cy="23.4" r="2.7" className={coreClassName} fill="currentColor" stroke="none" />
+
+      {/* The send: a large plane, clear of the path, with the folded wing
+          notched so it reads as a plane and not a triangle. */}
       <path
-        d="M43 3L34.5 25.5l-4-9.5-9.5-4z"
+        d="M55.5 9.5L37.5 17.2l7.2 3.1 3.1 7.2z"
         fill="currentColor"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="1.6"
       />
+      <path d="M55.5 9.5L44.7 20.3" stroke="currentColor" strokeWidth="1.5" fill="none" />
     </svg>
   );
 }
