@@ -22,6 +22,7 @@ OPENER_BREAKUP = "Breakup (close the loop)"
 OPENER_INTENT = "Intent-signal led"
 OPENER_PROBLEM = "Problem-first"
 OPENER_ROLE_ONLY = "Role-only (thin context)"
+OPENER_ASK_FIRST = "Ask first, then build (open a conversation)"
 
 
 @dataclass(frozen=True)
@@ -111,6 +112,27 @@ TEMPLATES: list[SequenceTemplate] = [
                 + " The first email led with the signal they are already "
                 "researching; this one turns that into something concrete you "
                 "would build for them.",
+            ),
+            TemplateStep(OPENER_BREAKUP, 5, _BREAKUP_RULES),
+        ],
+    ),
+    SequenceTemplate(
+        key="ask-first",
+        name="Ask first, then build",
+        summary="Ask what eats their time, then build whatever they describe.",
+        best_for=(
+            "Businesses whose real bottleneck you cannot guess from a company "
+            "description -- the reply tells you what to build instead."
+        ),
+        steps=[
+            TemplateStep(OPENER_ASK_FIRST, 0),
+            TemplateStep(
+                OPENER_DEMO,
+                4,
+                _FOLLOW_UP_RULES
+                + " The first email asked what takes up their time and got no "
+                "answer, so stop asking and name one concrete thing you would "
+                "build for THIS business instead. Do not repeat the question.",
             ),
             TemplateStep(OPENER_BREAKUP, 5, _BREAKUP_RULES),
         ],
