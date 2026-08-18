@@ -88,8 +88,12 @@ export default async function AnalyticsPage() {
         />
         <StatCard
           label="Reply rate"
-          value={`${stats.reply_rate}%`}
-          hint={`${stats.replied_count} replied`}
+          value={stats.approved_drafts > 0 ? `${stats.reply_rate}%` : "—"}
+          hint={
+            stats.approved_drafts > 0
+              ? `${stats.replied_count} of ${stats.approved_drafts} replied`
+              : "nothing sent yet"
+          }
         />
       </div>
 

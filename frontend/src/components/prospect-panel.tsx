@@ -294,7 +294,7 @@ export function ProspectPanel({
           <button
             onClick={remove}
             disabled={pending}
-            className="btn-ghost mt-2 w-full text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
+            className="btn-danger mt-2 w-full"
           >
             Delete prospect
           </button>

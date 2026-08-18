@@ -190,7 +190,7 @@ export function DraftCard({
         ) : (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button onClick={approve} disabled={pending} className="btn-primary h-9">
-              {pending ? "Working…" : "Copy & mark sent"}
+              {pending ? "Copying…" : "Copy & mark sent"}
             </button>
 
             {editing ? (

@@ -13,6 +13,25 @@ import { windowSummary } from "@/lib/schedule-preview";
 import type { Strategy } from "@/lib/prospect-types";
 import { Toast, useToast } from "@/components/toast";
 
+
+/** Step reordering arrows, matching the app's other 1.6-stroke glyphs. */
+function ArrowIcon({ dir }: { dir: "up" | "down" }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      aria-hidden
+      className={`h-4 w-4 ${dir === "down" ? "rotate-180" : ""}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10 15.5v-11M5.5 9L10 4.5 14.5 9" />
+    </svg>
+  );
+}
+
 function StepRow({
   step,
   index,
@@ -106,7 +125,7 @@ function StepRow({
               aria-label="Move step up"
               className="btn-ghost h-8 px-2"
             >
-              ↑
+              <ArrowIcon dir="up" />
             </button>
             <button
               onClick={() => onMove(index, 1)}
@@ -114,7 +133,7 @@ function StepRow({
               aria-label="Move step down"
               className="btn-ghost h-8 px-2"
             >
-              ↓
+              <ArrowIcon dir="down" />
             </button>
             <label className="ml-2 flex items-center gap-1.5 text-xs text-ink">
               <input

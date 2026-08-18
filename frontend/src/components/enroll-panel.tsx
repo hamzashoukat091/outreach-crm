@@ -380,9 +380,9 @@ export function EnrollPanel({
           <SendIcon />
           {pending
             ? "Enrolling…"
-            : `Enroll ${selectable.length || ""} prospect${
-                selectable.length === 1 ? "" : "s"
-              }`}
+            : selectable.length
+              ? `Enroll ${selectable.length} prospect${selectable.length === 1 ? "" : "s"}`
+              : "Enroll prospects"}
         </button>
       </div>
 

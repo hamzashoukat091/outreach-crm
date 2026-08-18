@@ -205,7 +205,10 @@ function SafetySection({ settings }: { settings: AutomationSettings }) {
               disabled={pending}
               aria-pressed={settings.dry_run}
               className={`h-9 shrink-0 ${
-                settings.dry_run ? "btn-secondary" : "btn-primary"
+                // Going live is the consequential direction, so it carries the
+                // send tier; returning to dry run is a retreat to safety and
+                // stays quiet.
+                settings.dry_run ? "btn-send" : "btn-secondary"
               }`}
             >
               {settings.dry_run ? "Turn off — go live" : "Turn on dry run"}
@@ -225,7 +228,7 @@ function SafetySection({ settings }: { settings: AutomationSettings }) {
               onClick={() => save({ sending_paused: !settings.sending_paused })}
               disabled={pending}
               className={`h-9 shrink-0 ${
-                settings.sending_paused ? "btn-primary" : "btn-secondary"
+                settings.sending_paused ? "btn-send" : "btn-secondary"
               }`}
             >
               {settings.sending_paused ? "Resume sending" : "Pause sending"}

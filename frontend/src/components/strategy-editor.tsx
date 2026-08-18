@@ -301,7 +301,18 @@ export function StrategyCard({ strategy }: { strategy: Strategy }) {
   const router = useRouter();
 
   function remove() {
-    if (!window.confirm(`Delete "${strategy.name}"? Past drafts keep their history.`)) return;
+    if (
+      !window.confirm(
+        `Delete "${strategy.name}"?
+
+` +
+          `Past drafts keep their history. Any sequence step using it falls ` +
+          `back to your default opener, so those emails get written with a ` +
+          `different angle.`,
+      )
+    ) {
+      return;
+    }
     startTransition(async () => {
       const result = await deleteStrategyAction(strategy.id);
       show(result);

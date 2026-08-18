@@ -163,7 +163,7 @@ function PendingApprovalCard({
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button onClick={approve} disabled={pending} className="btn-send h-9">
             <SendIcon />
-            {pending ? "Working…" : "Approve & send"}
+            {pending ? "Sending…" : "Approve & send"}
           </button>
           <button onClick={regenerate} disabled={pending} className="btn-secondary h-9">
             Regenerate
