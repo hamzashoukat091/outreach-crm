@@ -58,6 +58,11 @@ export default async function ProspectDetailPage({
   }
 
   const liveDrafts = drafts.filter((d) => d.status !== "discarded");
+  // 'draft' means written but not sent; 'approved' means you copied it out and
+  // marked it sent. Both live in this list, which is why calling the whole
+  // section "Drafts" made a sent email look like it was still waiting.
+  const waiting = liveDrafts.filter((d) => d.status === "draft");
+  const sentByHand = liveDrafts.filter((d) => d.status === "approved");
 
   const personLocation =
     [prospect.prospect_city, prospect.prospect_region].filter(Boolean).join(", ") || null;
@@ -229,14 +234,23 @@ export default async function ProspectDetailPage({
           )}
 
           <section>
-            <h2 className="mb-3 text-sm font-semibold text-ink">
-              Drafts {liveDrafts.length > 0 && `(${liveDrafts.length})`}
+            <h2 className="mb-1 text-sm font-semibold text-ink">
+              Manual emails{" "}
+              {liveDrafts.length > 0 && (
+                <span className="font-normal text-muted">
+                  ({waiting.length} waiting, {sentByHand.length} sent)
+                </span>
+              )}
             </h2>
+            <p className="mb-3 text-xs text-muted">
+              Written with a strategy, copied out and sent by you. Separate from
+              the automation engine.
+            </p>
             {liveDrafts.length === 0 ? (
               <div className="card">
                 <EmptyState
-                  title="No drafts yet"
-                  description="Generate an email with one of your strategies, then review it here before sending."
+                  title="Nothing written yet"
+                  description="Generate an email with one of your strategies, then review it here before you copy and send it."
                 />
               </div>
             ) : (

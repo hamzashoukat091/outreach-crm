@@ -117,7 +117,11 @@ export function DraftCard({
   return (
     <>
       <div
-        className={`card p-5 ${draft.status === "discarded" ? "opacity-60" : ""}`}
+        // A sent email sits in the same list as ones still waiting, so the
+        // difference has to be visible before reading the badge.
+        className={`card p-5 ${draft.status === "discarded" ? "opacity-60" : ""} ${
+          sent ? "border-l-2 border-l-emerald-500/60" : ""
+        }`}
       >
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">

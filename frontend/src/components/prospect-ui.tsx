@@ -36,7 +36,10 @@ const DRAFT_TONE: Record<DraftStatus, string> = {
 };
 
 export function DraftStatusBadge({ status }: { status: DraftStatus }) {
-  const label = status === "approved" ? "sent" : status;
+  // "draft" is the word people trip over: the section holds sent emails too,
+  // so the unsent state says what it is waiting for instead.
+  const label =
+    status === "approved" ? "sent" : status === "draft" ? "not sent" : status;
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${DRAFT_TONE[status]}`}
