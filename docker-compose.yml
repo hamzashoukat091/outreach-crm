@@ -38,6 +38,9 @@ services:
       # Read from .env -- never commit the key into this file.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
+      # The login. Read from .env; an empty value locks the gate shut.
+      AUTH_USERNAME: ${AUTH_USERNAME:-}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:-}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:

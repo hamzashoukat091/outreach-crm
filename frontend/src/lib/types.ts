@@ -295,3 +295,14 @@ export interface SequenceTemplate {
   }[];
   missing_strategies: string[];
 }
+
+/** One live login, as shown in the Settings device list. */
+export interface AuthSessionInfo {
+  id: string;
+  created_at: string;
+  last_seen_at: string;
+  expires_at: string;
+  user_agent: string | null;
+  ip: string | null;
+  current: boolean;
+}

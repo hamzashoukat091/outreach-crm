@@ -1,5 +1,6 @@
 import type {
   ApprovalItem,
+  AuthSessionInfo,
   AutomationAnalytics,
   AutomationMessage,
   AutomationMessageDetail,
@@ -50,15 +51,38 @@ export class ApiError extends Error {
   }
 }
 
+const SESSION_COOKIE = "outreach_session";
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const isServer = typeof window === "undefined";
+  const headers: Record<string, string> =
+    init?.body instanceof FormData
+      ? { ...((init?.headers as Record<string, string>) ?? {}) }
+      : { "Content-Type": "application/json", ...((init?.headers as Record<string, string>) ?? {}) };
+
+  // Server components run inside the web container, where the browser's
+  // cookie never travels automatically -- forward it by hand or every
+  // server-side fetch arrives at the gate anonymous.
+  if (isServer) {
+    const { cookies } = await import("next/headers");
+    const token = (await cookies()).get(SESSION_COOKIE);
+    if (token) headers.cookie = `${SESSION_COOKIE}=${token.value}`;
+  }
+
   const res = await fetch(`${apiBase()}${path}`, {
     ...init,
-    headers:
-      init?.body instanceof FormData
-        ? init?.headers
-        : { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers,
+    // The browser side: send the session cookie to the API's port.
+    credentials: "include",
     cache: "no-store",
   });
+
+  // A 401 mid-session means the login expired or was revoked. In the browser
+  // the only useful response is the gate itself. (Server-side 401s surface as
+  // ApiError; the middleware makes them rare by validating before render.)
+  if (res.status === 401 && !isServer && !path.startsWith("/api/auth/")) {
+    window.location.assign("/login");
+  }
 
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
@@ -78,6 +102,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  // ---------- Auth ----------
+
+  login: (username: string, password: string) =>
+    request<{ ok: boolean; username: string }>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+  logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+  me: () => request<{ username: string; session_id: string }>("/api/auth/me"),
+  listAuthSessions: () => request<AuthSessionInfo[]>("/api/auth/sessions"),
+  revokeAuthSession: (id: string) =>
+    request<{ ok: boolean }>(`/api/auth/sessions/${id}`, { method: "DELETE" }),
+
   // ---------- Prospects ----------
 
   listProspects: (

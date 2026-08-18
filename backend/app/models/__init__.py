@@ -1,3 +1,4 @@
+from app.models.auth import AuthSession, User  # noqa: F401
 from app.models.automation import (  # noqa: F401
     ALWAYS_ESCALATE,
     DEFAULT_SETTINGS,

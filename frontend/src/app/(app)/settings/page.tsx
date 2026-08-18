@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { ActiveSessions } from "@/components/active-sessions";
 import { AutomationSettingsPanel } from "@/components/automation-settings";
 import { PageHeader, formatDate } from "@/components/ui";
 import { ApiError } from "@/components/api-error";
@@ -94,6 +95,9 @@ export default async function SettingsPage() {
       )}
 
       <AutomationSettingsPanel settings={settings} facts={facts} />
+      <div className="mt-6">
+        <ActiveSessions />
+      </div>
     </>
   );
 }

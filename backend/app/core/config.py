@@ -35,6 +35,11 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:3000"
 
+    # The login. Empty means the gate refuses everyone rather than admitting
+    # everyone -- fail closed, not open, if the env goes missing.
+    auth_username: str = ""
+    auth_password: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
