@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { api } from "@/lib/api";
 import { AutomationConversation } from "@/components/automation-conversation";
+import { CopyButton } from "@/components/copy-button";
 import { PipelineModeBadge } from "@/components/automation-ui";
 import { DraftCard } from "@/components/draft-card";
 import { ProspectPanel } from "@/components/prospect-panel";
@@ -122,18 +123,27 @@ export default async function ProspectDetailPage({
               {details
                 .filter(([, value]) => value)
                 .map(([label, value]) => (
-                  <div key={label}>
+                  <div key={label} className="group">
                     <dt className="text-xs text-muted">{label}</dt>
-                    <dd className="mt-0.5 break-words text-sm text-ink">
-                      {value}
-                      {/* Deliverability sits next to the address it describes. */}
-                      {label === "Email" && (
-                        <EmailStatusBadge status={prospect.email_status} />
-                      )}
+                    <dd className="mt-0.5 flex items-start gap-1.5 break-words text-sm text-ink">
+                      <span className="min-w-0">
+                        {value}
+                        {/* Deliverability sits next to the address it describes. */}
+                        {label === "Email" && (
+                          <EmailStatusBadge status={prospect.email_status} />
+                        )}
+                      </span>
+                      <CopyButton value={String(value)} label={label} />
                     </dd>
                     {label === "Email" && prospect.other_emails.length > 0 && (
-                      <p className="mt-1 text-xs text-muted">
-                        Also: {prospect.other_emails.join(", ")}
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted">
+                        <span className="min-w-0 break-words">
+                          Also: {prospect.other_emails.join(", ")}
+                        </span>
+                        <CopyButton
+                          value={prospect.other_emails.join(", ")}
+                          label="Other emails"
+                        />
                       </p>
                     )}
                   </div>
@@ -141,8 +151,14 @@ export default async function ProspectDetailPage({
             </dl>
 
             {prospect.company_description && (
-              <div className="mt-4 border-t border-line pt-4">
-                <dt className="text-xs text-muted">What they do</dt>
+              <div className="group mt-4 border-t border-line pt-4">
+                <dt className="flex items-center gap-1.5 text-xs text-muted">
+                  What they do
+                  <CopyButton
+                    value={prospect.company_description}
+                    label="Company description"
+                  />
+                </dt>
                 <dd className="mt-1 text-sm text-ink">{prospect.company_description}</dd>
               </div>
             )}
