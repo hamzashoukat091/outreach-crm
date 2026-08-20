@@ -19,7 +19,10 @@ services:
 
   api:
     restart: unless-stopped
-    ports:
+    # Literal, not ${API_PORT}: the host port is an operational detail of
+    # this deployment, and threading it through .env only creates a second
+    # place for it to disagree with the base file.
+    ports: !override
       - "127.0.0.1:8100:8000"
     environment:
       # Same-origin through nginx, so the browser never talks to the API
@@ -46,7 +49,7 @@ services:
         # inlined into the bundle at build time -- setting it at runtime
         # would be silently ignored.
         NEXT_PUBLIC_API_URL: ""
-    ports:
+    ports: !override
       - "127.0.0.1:3100:3000"
 
   # Mailpit is a development mail catcher -- it accepts mail and shows it in
