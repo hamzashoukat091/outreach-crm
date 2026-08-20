@@ -37,7 +37,14 @@ import type {
  * per environment keeps one client usable from both sides.
  */
 const SERVER_BASE = process.env.API_URL ?? "http://api:8000";
-const BROWSER_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Empty string is meaningful: it means "same origin", which is how the
+// production deploy runs -- nginx proxies /api to the API container, so the
+// browser needs a relative path and no CORS is involved. Note `??` would not
+// catch "" and would fall back to localhost, breaking every browser call.
+const BROWSER_BASE =
+  process.env.NEXT_PUBLIC_API_URL === undefined
+    ? "http://localhost:8000"
+    : process.env.NEXT_PUBLIC_API_URL;
 
 export const apiBase = () => (typeof window === "undefined" ? SERVER_BASE : BROWSER_BASE);
 

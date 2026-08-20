@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     auth_username: str = ""
     auth_password: str = ""
 
+    # Marks the session cookie Secure, so browsers refuse to send it over
+    # plain http. Off by default because local development is http://
+    # localhost; production sets it true behind TLS.
+    session_cookie_secure: bool = False
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

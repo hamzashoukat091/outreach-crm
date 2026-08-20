@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.db import get_db
 from app.models.auth import AuthSession, User
 from app.services import auth as auth_service
@@ -33,7 +34,7 @@ def _set_cookie(response: Response, token: str) -> None:
         max_age=auth_service.SESSION_DAYS * 86400,
         httponly=True,      # invisible to page JS; XSS cannot read it
         samesite="lax",     # not sent on cross-site POSTs
-        secure=False,       # localhost is plain http; flip behind TLS
+        secure=settings.session_cookie_secure,  # true behind TLS in production
         path="/",
     )
 

@@ -1,0 +1,56 @@
+# Production overlay. Use with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Two jobs. First, nothing binds to a public interface: every published port
+# is pinned to 127.0.0.1, so the only way in from outside is through nginx,
+# which terminates TLS. The base file publishes on 0.0.0.0, which on a box
+# with a public IP would put Postgres and the unproxied API on the internet.
+#
+# Second, everything restarts on its own -- after a crash and after a reboot.
+#
+# Ports avoid the host's existing Flask API on :8000.
+
+services:
+  db:
+    restart: unless-stopped
+    # No published port at all. The API reaches Postgres over the compose
+    # network; nothing outside the stack has any business connecting.
+    ports: !override []
+
+  api:
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8100:8000"
+    environment:
+      # Same-origin through nginx, so the browser never talks to the API
+      # directly and there is no cross-origin request to allow.
+      CORS_ORIGINS: ${PUBLIC_URL:-https://outreach.openval.ai}
+      # HTTPS is terminated by nginx, so the session cookie must be
+      # Secure -- without this it would also travel over plain http.
+      SESSION_COOKIE_SECURE: "true"
+      # Real delivery goes through the SMTP settings saved in the app's
+      # own Settings page; console keeps a fresh deploy from mailing
+      # anyone before you have configured that.
+      MAIL_DRIVER: ${MAIL_DRIVER:-console}
+
+  worker:
+    restart: unless-stopped
+
+  web:
+    restart: unless-stopped
+    build:
+      context: ./frontend
+      args:
+        # Empty = same origin: the browser calls /api and nginx proxies it to
+        # the API container. This is a build arg because NEXT_PUBLIC_* is
+        # inlined into the bundle at build time -- setting it at runtime
+        # would be silently ignored.
+        NEXT_PUBLIC_API_URL: ""
+    ports:
+      - "127.0.0.1:3100:3000"
+
+  # Mailpit is a development mail catcher -- it accepts mail and shows it in
+  # a web UI instead of delivering it. It has no place in production, and its
+  # UI has no authentication of its own.
+  mailpit:
+    profiles: ["dev-only"]
