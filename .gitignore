@@ -66,3 +66,7 @@ desktop.ini
 android/*.keystore
 android/*.jks
 android/twa-manifest.json
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
