@@ -71,6 +71,14 @@ export const config = {
    * worker that is forbidden from touching /api. Every real route stays gated.
    */
   matcher: [
-    "/((?!_next/static|_next/image|icon.svg|favicon.ico|favicon-32.png|manifest.webmanifest|sw.js|offline.html|apple-touch-icon.png|icon-192.png|icon-512.png|icon-maskable-192.png|icon-maskable-512.png|health$|.well-known).*)",
+    /* Matched by shape, not by a list of filenames. The list version was
+       already wrong once: adding splash-icon.png to public/ left it gated,
+       so the icon 307'd to /login and the Android build could not fetch it.
+       Anything a browser or an OS asks for before a session exists is a
+       top-level static asset, and none of them are data.
+
+       Only top-level is exempt -- the pattern has no slash before the
+       extension -- so /prospects/secret.png would still be gated. */
+    "/((?!_next/static|_next/image|health$|\.well-known/|[^/]+\.(?:png|svg|ico|webmanifest|js|txt|xml|webp|woff2?|html)$).*)",
   ],
 };
