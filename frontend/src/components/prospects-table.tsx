@@ -163,7 +163,7 @@ export function ProspectsTable({
   return (
     <>
       {selected.size > 0 && (
-        <div className="sticky top-2 z-20 mb-3 flex flex-wrap items-center gap-3 rounded-xl
+        <div className="sticky top-[4.5rem] z-20 mb-3 flex flex-wrap items-center gap-3 rounded-xl lg:top-2
           border border-accent/25 bg-accent-soft/90 px-4 py-3 shadow-card backdrop-blur-md
           animate-fade-up">
           <span className="tabular text-sm font-medium text-ink">
@@ -253,8 +253,11 @@ export function ProspectsTable({
       )}
 
       <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        {/* -webkit-overflow-scrolling keeps the momentum flick on iOS; the
+            table's own min-width stops columns collapsing into unreadable
+            slivers on a narrow screen. */}
+        <div className="overflow-x-auto [-webkit-overflow-scrolling:touch]">
+          <table className="w-full min-w-[42rem] text-sm">
             {/* Sticky: scanning row 40 is useless if the column labels
                 scrolled away at row 10. */}
             <thead className="sticky top-0 z-10 border-b border-line bg-surface-2/85 backdrop-blur-md">

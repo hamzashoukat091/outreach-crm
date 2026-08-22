@@ -109,9 +109,12 @@ body {
 
 @layer components {
   .btn {
-    @apply relative inline-flex cursor-pointer select-none items-center justify-center gap-2
-      rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-150 ease-out
-      active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    /* min-h-11 = 44px, the Apple/Material touch minimum. Lifted at sm: so the
+       desktop layout keeps its tighter vertical rhythm. */
+    @apply relative inline-flex min-h-11 cursor-pointer select-none items-center
+      justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
+      transition-all duration-150 ease-out active:scale-[0.98]
+      disabled:pointer-events-none disabled:opacity-50 sm:min-h-0;
   }
   .btn-primary {
     @apply btn bg-accent-solid text-white shadow-btn
@@ -146,13 +149,35 @@ body {
       hover:-translate-y-0.5 hover:border-line-strong hover:shadow-card-hover;
   }
   .input {
-    @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink
+    /* 16px is not a style choice on mobile: iOS Safari zooms the viewport on
+       focus for anything smaller, which shoves the layout sideways mid-typing
+       and does not zoom back out. sm: returns to 14px for pointer screens. */
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-base text-ink
       shadow-inset outline-none transition duration-150 placeholder:text-muted
-      hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/[0.12];
+      hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/[0.12]
+      sm:py-2 sm:text-sm;
   }
   .label {
     @apply mb-1.5 block text-sm font-medium text-ink;
   }
+  /* Native selects inherit none of .input's sizing unless asked. */
+  select.input {
+    @apply pr-8;
+  }
+  /* A 16px checkbox is a miss on a phone; the padded hit area is invisible
+     but doubles the reachable region. */
+  input[type="checkbox"] {
+    @apply cursor-pointer;
+  }
+  /* A scroll region that scrolls without advertising it -- used on the mobile
+     nav strip, where a visible bar would sit under the thumb anyway. */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Section eyebrow: small, spaced, quiet. Used above card groups. */
   .eyebrow {
     @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted;

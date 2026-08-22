@@ -41,8 +41,18 @@ export function NavLinks() {
   }, [pathname]);
 
   return (
-    <nav className="px-3 pb-3 lg:pb-6">
-      <div className="flex gap-1 overflow-x-auto lg:flex-col">
+    <nav
+      className="px-2 pb-2 lg:px-3 lg:pb-6"
+      aria-label="Main"
+    >
+      {/* Horizontally scrolling tab strip on mobile, vertical list on desktop.
+          snap-x makes the strip land on whole items instead of stopping
+          mid-label; the hidden scrollbar keeps a 2px grey line off the
+          chrome on desktop trackpads. */}
+      <div
+        className="flex snap-x snap-mandatory gap-1 overflow-x-auto scrollbar-none
+          lg:snap-none lg:flex-col lg:overflow-visible"
+      >
         {LINKS.map((link) => {
           const active =
             link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
@@ -54,9 +64,9 @@ export function NavLinks() {
               key={link.href}
               href={link.href}
               aria-current={active ? "page" : undefined}
-              className={`group relative flex min-h-11 items-center gap-2.5 whitespace-nowrap
-                rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ease-out
-                lg:min-h-0 lg:py-2 ${
+              className={`group relative flex min-h-11 shrink-0 snap-start items-center
+                gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium
+                transition-all duration-150 ease-out lg:min-h-0 lg:shrink lg:gap-2.5 ${
                   active
                     ? "bg-accent-soft text-accent"
                     : "text-muted hover:bg-surface-2 hover:text-ink"

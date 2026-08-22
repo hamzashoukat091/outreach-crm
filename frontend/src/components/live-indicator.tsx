@@ -16,7 +16,7 @@ import type { AutomationStatus } from "@/lib/types";
  *  Deliberately not colour-only: each state has its own word and its own dot,
  *  because "green vs amber" is precisely the pair that fails for the most
  *  common form of colour blindness. */
-export function LiveIndicator() {
+export function LiveIndicator({ compact = false }: { compact?: boolean } = {}) {
   const pathname = usePathname();
   const [status, setStatus] = useState<AutomationStatus | null>(null);
   const [failed, setFailed] = useState(false);
@@ -59,6 +59,31 @@ export function LiveIndicator() {
     : paused
       ? "Sending is stopped"
       : "Nothing is delivered";
+
+  // Mobile: a dot and one word on the brand row. The full card would cost a
+  // whole block of vertical space on a screen that has none to spare, but
+  // dropping the state entirely is not an option -- it is the one thing you
+  // must be able to see from anywhere.
+  if (compact) {
+    return (
+      <Link
+        href="/settings"
+        title={`${label} — ${detail}`}
+        aria-label={`${label}. ${detail}. Open settings.`}
+        className={`flex min-h-11 items-center gap-1.5 rounded-lg border px-2.5 text-xs
+          font-semibold ${tone}`}
+      >
+        <span className="relative flex h-1.5 w-1.5 shrink-0">
+          {live && (
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full
+              bg-send opacity-60 motion-reduce:hidden" />
+          )}
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-current" />
+        </span>
+        {label}
+      </Link>
+    );
+  }
 
   return (
     <div className="px-3 pb-4 lg:px-5">

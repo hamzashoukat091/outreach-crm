@@ -79,8 +79,8 @@ export function EnrollmentsTable({
   return (
     <>
       <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto [-webkit-overflow-scrolling:touch]">
+          <table className="w-full min-w-[40rem] text-sm">
             <thead className="border-b border-line bg-surface-2/60">
               <tr className="text-left text-xs uppercase tracking-wide text-muted">
                 <th className="px-4 py-3 font-medium">Prospect</th>
