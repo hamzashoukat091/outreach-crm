@@ -53,12 +53,17 @@ const config: Config = {
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
+        "slide-in": {
+          from: { transform: "translateX(-100%)" },
+          to: { transform: "translateX(0)" },
+        },
       },
       animation: {
         // Short and ease-out: entering content should feel already-arrived.
         "fade-up": "fade-up 260ms cubic-bezier(0.16, 1, 0.3, 1) both",
         "fade-in": "fade-in 200ms ease-out both",
         shimmer: "shimmer 1.6s infinite",
+        "slide-in": "slide-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both",
       },
     },
   },

@@ -5,19 +5,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { NAV_ICONS } from "@/components/nav-icons";
+import { NAV_LINKS } from "@/components/nav-config";
 
-const LINKS = [
-  { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
-  { href: "/prospects", label: "Prospects", icon: "prospects" },
-  { href: "/sequences", label: "Sequences", icon: "sequences" },
-  { href: "/inbox", label: "Inbox", icon: "inbox" },
-  // Approvals gates whether replies go out at all. It was reachable only by
-  // typing the URL, which meant held emails could sit unseen indefinitely.
-  { href: "/approvals", label: "Approvals", icon: "approvals", badge: "approvals" as const },
-  { href: "/strategies", label: "Strategies", icon: "strategies" },
-  { href: "/analytics", label: "Analytics", icon: "analytics" },
-  { href: "/settings", label: "Settings", icon: "settings" },
-];
 
 export function NavLinks() {
   const pathname = usePathname();
@@ -41,19 +30,13 @@ export function NavLinks() {
   }, [pathname]);
 
   return (
-    <nav
-      className="lg:px-3 lg:pb-6"
-      aria-label="Main"
-    >
+    <nav className="hidden lg:block lg:px-3 lg:pb-6" aria-label="Main">
       {/* Horizontally scrolling tab strip on mobile, vertical list on desktop.
           snap-x makes the strip land on whole items instead of stopping
           mid-label; the hidden scrollbar keeps a 2px grey line off the
           chrome on desktop trackpads. */}
-      <div
-        className="flex snap-x snap-mandatory gap-1 overflow-x-auto scrollbar-none
-          lg:snap-none lg:flex-col lg:overflow-visible"
-      >
-        {LINKS.map((link) => {
+      <div className="flex flex-col gap-1">
+        {NAV_LINKS.map((link) => {
           const active =
             link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
           const count = link.badge === "approvals" ? pending : 0;

@@ -37,11 +37,12 @@ function LoginForm() {
 
   return (
     <div
-      className="flex min-h-[100dvh] items-center justify-center px-5 py-8
-        pt-[max(2rem,env(safe-area-inset-top))]
-        pb-[max(2rem,env(safe-area-inset-bottom))]"
+      className="flex min-h-[100dvh] flex-col justify-start px-5
+        pt-[max(3.5rem,env(safe-area-inset-top))]
+        pb-[max(2rem,env(safe-area-inset-bottom))]
+        sm:justify-center sm:pt-8"
     >
-      <div className="w-full max-w-sm animate-fade-up">
+      <div className="mx-auto w-full max-w-sm animate-fade-up">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent-solid text-white shadow-glow">
             <Logo className="h-7 w-7" />
