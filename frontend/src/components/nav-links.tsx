@@ -66,7 +66,7 @@ export function NavLinks() {
               aria-current={active ? "page" : undefined}
               className={`group relative flex min-h-11 shrink-0 snap-start items-center
                 gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium
-                transition-all duration-150 ease-out lg:min-h-0 lg:shrink lg:gap-2.5 ${
+                nav-item transition-all duration-150 ease-out lg:shrink lg:gap-2.5 ${
                   active
                     ? "bg-accent-soft text-accent"
                     : "text-muted hover:bg-surface-2 hover:text-ink"

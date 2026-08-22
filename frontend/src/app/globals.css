@@ -109,12 +109,14 @@ body {
 
 @layer components {
   .btn {
-    /* min-h-11 = 44px, the Apple/Material touch minimum. Lifted at sm: so the
-       desktop layout keeps its tighter vertical rhythm. */
+    /* 44px, the Apple/Material touch minimum. Relaxed only for precise
+       pointers (see the pointer:fine block below) -- width is the wrong
+       signal, since a 768px iPad is a finger and a narrow desktop window
+       is still a mouse. */
     @apply relative inline-flex min-h-11 cursor-pointer select-none items-center
       justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
       transition-all duration-150 ease-out active:scale-[0.98]
-      disabled:pointer-events-none disabled:opacity-50 sm:min-h-0;
+      disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
     @apply btn bg-accent-solid text-white shadow-btn
@@ -149,13 +151,12 @@ body {
       hover:-translate-y-0.5 hover:border-line-strong hover:shadow-card-hover;
   }
   .input {
-    /* 16px is not a style choice on mobile: iOS Safari zooms the viewport on
-       focus for anything smaller, which shoves the layout sideways mid-typing
-       and does not zoom back out. sm: returns to 14px for pointer screens. */
+    /* 16px is not a style choice on touch: iOS Safari zooms the viewport on
+       focus for anything smaller and does not zoom back out, so the layout
+       lurches sideways mid-typing. Relaxed for precise pointers below. */
     @apply w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-base text-ink
       shadow-inset outline-none transition duration-150 placeholder:text-muted
-      hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/[0.12]
-      sm:py-2 sm:text-sm;
+      hover:border-line-strong focus:border-accent focus:ring-4 focus:ring-accent/[0.12];
   }
   .label {
     @apply mb-1.5 block text-sm font-medium text-ink;
@@ -181,6 +182,22 @@ body {
   /* Section eyebrow: small, spaced, quiet. Used above card groups. */
   .eyebrow {
     @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted;
+  }
+}
+
+/* Mouse and trackpad users get the tighter rhythm. Anything driven by a
+   finger -- phone, tablet, touchscreen laptop -- keeps the 44px targets and
+   16px fields, whatever the screen width happens to be. */
+@media (pointer: fine) {
+  .btn,
+  .nav-item {
+    min-height: 0;
+  }
+  .input {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
   }
 }
 
