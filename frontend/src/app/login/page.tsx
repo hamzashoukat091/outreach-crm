@@ -46,10 +46,15 @@ function LoginForm() {
 
   return (
     <div
-      className="flex min-h-[100dvh] flex-col justify-start px-5
-        pt-[max(3.5rem,env(safe-area-inset-top))]
-        pb-[max(2rem,env(safe-area-inset-bottom))]
-        sm:justify-center sm:pt-8"
+      /* Centred, with the safe-area insets as padding rather than as a top
+         offset. justify-center plus min-h means the card sits in the middle
+         of whatever height the viewport actually has, and 100dvh shrinks
+         when the keyboard opens, so the card rides up with it instead of
+         being pushed off the bottom. py- (not pt-) keeps it centred within
+         the padded box; padding only one side would re-introduce the drift
+         that made it look pinned to the top. */
+      className="flex min-h-[100dvh] flex-col justify-center px-5
+        py-[max(2rem,env(safe-area-inset-top),env(safe-area-inset-bottom))]"
     >
       <div className="mx-auto w-full max-w-sm animate-fade-up">
         <div className="mb-8 flex flex-col items-center text-center">
