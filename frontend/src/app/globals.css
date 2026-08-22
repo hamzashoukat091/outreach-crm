@@ -185,6 +185,17 @@ body {
   }
 }
 
+/* Call sites pin h-8/h-9 for the desktop rhythm. On a touch screen that is
+   a 32px target, under the 44px minimum, so the floor is reasserted here --
+   scoped to coarse pointers so desktop keeps its density. Doubling the class
+   raises specificity above the h-9 utility without !important. */
+@media (pointer: coarse) {
+  .btn.btn,
+  .input.input {
+    min-height: 2.75rem;
+  }
+}
+
 /* Mouse and trackpad users get the tighter rhythm. Anything driven by a
    finger -- phone, tablet, touchscreen laptop -- keeps the 44px targets and
    16px fields, whatever the screen width happens to be. */

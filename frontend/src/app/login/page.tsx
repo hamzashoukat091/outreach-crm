@@ -36,7 +36,11 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-5">
+    <div
+      className="flex min-h-[100dvh] items-center justify-center px-5 py-8
+        pt-[max(2rem,env(safe-area-inset-top))]
+        pb-[max(2rem,env(safe-area-inset-bottom))]"
+    >
       <div className="w-full max-w-sm animate-fade-up">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent-solid text-white shadow-glow">

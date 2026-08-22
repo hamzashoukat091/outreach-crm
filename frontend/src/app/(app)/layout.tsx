@@ -19,9 +19,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           backdrop-blur-xl lg:h-[100dvh] lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r
           pt-[env(safe-area-inset-top)] lg:pt-0"
       >
-        <div className="flex items-center gap-2.5 px-4 py-3 lg:px-5 lg:py-5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-accent-solid text-white shadow-glow">
-            <Logo className="h-[22px] w-[22px]" />
+        <div className="flex items-center gap-2.5 px-4 py-2 lg:px-5 lg:py-5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-solid text-white shadow-glow lg:h-9 lg:w-9 lg:rounded-[10px]">
+            <Logo className="h-5 w-5 lg:h-[22px] lg:w-[22px]" />
           </div>
           <div className="min-w-0">
             <Link

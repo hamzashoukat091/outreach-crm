@@ -76,7 +76,7 @@ export function ProspectToolbar({
       {/* One row: search takes the slack, filters stay as narrow as their
           content, and the actions ride along instead of claiming a second
           row of vertical space. */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
         <input
           type="search"
           placeholder="Search name, email, company, or title…"
@@ -86,13 +86,13 @@ export function ProspectToolbar({
             clearTimeout((window as any).__prospectSearch);
             (window as any).__prospectSearch = setTimeout(() => setParam("q", value), 350);
           }}
-          className="input h-9 w-full min-w-44 max-w-xs flex-1 py-0 sm:w-auto"
+          className="input col-span-2 min-h-11 w-full min-w-0 flex-1 sm:h-9 sm:max-w-xs sm:w-auto sm:py-0"
         />
 
         <select
           defaultValue={params.get("status") ?? ""}
           onChange={(e) => setParam("status", e.target.value)}
-          className="input h-9 w-auto py-0 text-sm"
+          className="input min-h-11 w-full text-sm sm:h-9 sm:w-auto sm:py-0"
         >
           <option value="">All statuses</option>
           {STATUSES.map((s) => (
@@ -126,7 +126,7 @@ export function ProspectToolbar({
           <select
             defaultValue={params.get("category") ?? ""}
             onChange={(e) => setParam("category", e.target.value)}
-            className="input h-9 w-auto py-0 text-sm"
+            className="input min-h-11 w-full text-sm sm:h-9 sm:w-auto sm:py-0"
           >
             <option value="">All categories</option>
             {categories.map((c) => (
@@ -141,7 +141,7 @@ export function ProspectToolbar({
           <select
             defaultValue={params.get("seniority") ?? ""}
             onChange={(e) => setParam("seniority", e.target.value)}
-            className="input h-9 w-auto py-0 text-sm"
+            className="input min-h-11 w-full text-sm sm:h-9 sm:w-auto sm:py-0"
           >
             <option value="">All seniority</option>
             {seniorities.map((s) => (

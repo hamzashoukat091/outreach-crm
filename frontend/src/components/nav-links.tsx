@@ -42,7 +42,7 @@ export function NavLinks() {
 
   return (
     <nav
-      className="px-2 pb-2 lg:px-3 lg:pb-6"
+      className="px-2 pb-1.5 lg:px-3 lg:pb-6"
       aria-label="Main"
     >
       {/* Horizontally scrolling tab strip on mobile, vertical list on desktop.
