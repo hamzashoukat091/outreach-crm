@@ -183,6 +183,26 @@ body {
   .eyebrow {
     @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted;
   }
+
+  /* Offline: the page body is wrapped in a disabled fieldset, which stops
+     every control from working but changes how almost none of them look.
+     .btn carries its own disabled styling, so buttons dimmed correctly while
+     the search box, the filter chips and the file input stayed at full
+     contrast -- disabled but advertising themselves as usable, which reads
+     as a broken app rather than a paused one. Style by :disabled on the
+     descendants so anything inside the guard dims, including controls that
+     do not use the .btn classes. */
+  fieldset:disabled :is(button, input, select, textarea, label) {
+    @apply cursor-not-allowed opacity-50;
+  }
+  /* The inputs are not clickable anyway; removing pointer events too stops
+     the text cursor appearing over a field that cannot be typed into. */
+  fieldset:disabled :is(button, input, select, textarea) {
+    @apply pointer-events-none;
+  }
+  /* Cards behind the controls should stay legible -- the data is still
+     true, only the actions are paused. Dimming the whole region would
+     suggest the content itself is stale. */
 }
 
 /* Call sites pin h-8/h-9 for the desktop rhythm. On a touch screen that is
