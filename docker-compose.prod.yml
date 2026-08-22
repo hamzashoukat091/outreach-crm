@@ -38,6 +38,12 @@ services:
 
   worker:
     restart: unless-stopped
+    environment:
+      # No Mailpit in production -- it is excluded by the dev-only profile
+      # below. Empty means "no dev inbox to poll"; without this the worker
+      # falls back to the mailpit hostname, fails DNS, and logs a stack trace
+      # every poll for a mailbox nobody configured.
+      MAILPIT_API_URL: ""
 
   web:
     restart: unless-stopped

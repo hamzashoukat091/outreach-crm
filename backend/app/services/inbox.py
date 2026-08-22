@@ -56,10 +56,29 @@ class InboxSource(Protocol):
 
 
 def get_inbox_source(settings_row: AutomationSettings) -> "InboxSource":
-    """IMAP when the user configured a mailbox, Mailpit otherwise."""
+    """IMAP when the user configured a mailbox, Mailpit in dev, nothing in prod.
+
+    The third case matters: production runs without Mailpit (it is excluded by
+    a compose profile), so falling back to it there meant the worker tried to
+    resolve a host that does not exist and threw a DNS error on every poll --
+    a stack trace every 30 seconds, for a mailbox nobody had configured yet.
+    Noisy enough to bury a real error, and alarming to read.
+
+    An unconfigured inbox is a normal state, not a failure: no IMAP host and
+    no Mailpit simply means nothing to poll.
+    """
     if (settings_row.imap_host or "").strip():
         return ImapSource(settings_row)
+    if not (env_settings.mailpit_api_url or "").strip():
+        return NullSource()
     return MailpitSource()
+
+
+class NullSource:
+    """No inbox configured. Polling it is a no-op, not an error."""
+
+    def fetch_new(self) -> list["InboundEmail"]:
+        return []
 
 
 # ---------- Mailpit (dev) ----------
