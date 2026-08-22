@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .catch(() => 0);
 
   return (
-    <div className="flex min-h-full flex-col lg:flex-row">
+    <div className="flex min-h-full flex-col lg:h-full lg:flex-row">
       <aside
         className="sticky top-0 z-30 flex shrink-0 items-center gap-1 border-b border-line
           bg-surface/85 px-2 backdrop-blur-xl pt-[env(safe-area-inset-top)]
@@ -72,7 +72,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           and sign-out stay live offline, because being stuck on a page you
           cannot leave is worse than the outage itself. Only the page body --
           where every mutating button lives -- is disabled. */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col lg:h-full lg:overflow-y-auto">
         <OfflineBanner />
         <main className="flex-1 px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-5 lg:px-10 lg:py-8">
           <OfflineGuard>
