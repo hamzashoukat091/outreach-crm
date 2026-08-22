@@ -54,6 +54,16 @@
   }
 }
 
+html {
+  /* Kills Chrome's pull-to-refresh. In a browser tab that gesture is
+     expected; in an installed app it is not -- swiping down at the top of a
+     list bounces the whole page and can reload it mid-edit, which for a form
+     of unsaved draft text is destructive rather than merely surprising.
+     `contain` keeps normal scrolling and only stops the overscroll action,
+     and it also prevents scroll chaining out of the drawer and modals. */
+  overscroll-behavior-y: contain;
+}
+
 body {
   background: rgb(var(--canvas));
   color: rgb(var(--ink));
@@ -66,6 +76,17 @@ body {
 .prose-email {
   white-space: pre-wrap;
   line-height: 1.6;
+}
+
+/* Scroll containment for every inner scroll region: the drawer, the inbox
+   panes, the prompt inspector, the enrol list. Without it, reaching the end
+   of one of these hands the remaining scroll to the page behind it, so the
+   background creeps while you are reading a modal. Applied by attribute
+   rather than a class so it cannot be forgotten at a new call site. */
+[class*="overflow-y-auto"],
+[class*="overflow-auto"],
+[class*="overflow-y-scroll"] {
+  overscroll-behavior: contain;
 }
 
 /* Numbers in tables, stats and timers must not reflow as digits change. */
