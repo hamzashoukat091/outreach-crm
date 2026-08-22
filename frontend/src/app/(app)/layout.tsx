@@ -3,6 +3,7 @@ import { NavLinks } from "@/components/nav-links";
 import { LiveIndicator } from "@/components/live-indicator";
 import { Logo } from "@/components/logo";
 import { MobileNav } from "@/components/mobile-nav";
+import { OfflineBanner, OfflineGuard } from "@/components/offline-guard";
 import { SignOutButton } from "@/components/sign-out";
 import { api } from "@/lib/api";
 
@@ -67,9 +68,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      <main className="flex-1 px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-5 lg:px-10 lg:py-8">
-        <div className="mx-auto w-full max-w-6xl">{children}</div>
-      </main>
+      {/* The banner sits above the content and outside the guard; navigation
+          and sign-out stay live offline, because being stuck on a page you
+          cannot leave is worse than the outage itself. Only the page body --
+          where every mutating button lives -- is disabled. */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <OfflineBanner />
+        <main className="flex-1 px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-5 lg:px-10 lg:py-8">
+          <OfflineGuard>
+            <div className="mx-auto w-full max-w-6xl">{children}</div>
+          </OfflineGuard>
+        </main>
+      </div>
     </div>
   );
 }

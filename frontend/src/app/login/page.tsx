@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 import { api } from "@/lib/api";
 import { Logo } from "@/components/logo";
+import { useConnectivity } from "@/components/connectivity";
 
 function LoginForm() {
   const [username, setUsername] = useState("");
@@ -13,6 +14,7 @@ function LoginForm() {
   const [pending, setPending] = useState(false);
   const router = useRouter();
   const params = useSearchParams();
+  const { online } = useConnectivity();
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -26,11 +28,18 @@ function LoginForm() {
       router.replace(next && next.startsWith("/") ? next : "/dashboard");
       router.refresh();
     } catch (err) {
-      setError(
-        err instanceof Error && err.message
-          ? err.message
-          : "Could not sign in. Is the server running?",
-      );
+      /* Distinguish the causes. A phone with no signal and a mistyped
+         password both threw the same sentence before, which sent you
+         hunting for a typo that was never there. */
+      if (!navigator.onLine) {
+        setError("You're offline. Reconnect and try again.");
+      } else {
+        setError(
+          err instanceof Error && err.message
+            ? err.message
+            : "Could not reach the server. Check your connection and try again.",
+        );
+      }
       setPending(false);
     }
   }
@@ -98,9 +107,20 @@ function LoginForm() {
             </p>
           )}
 
-          <button type="submit" disabled={pending} className="btn-primary h-10 w-full">
+          <button
+            type="submit"
+            disabled={pending || !online}
+            className="btn-primary h-10 w-full"
+          >
             {pending ? "Signing in…" : "Sign in"}
           </button>
+
+          {/* A disabled button with no stated reason reads as a broken app. */}
+          {!online && (
+            <p role="status" className="text-center text-xs text-muted">
+              You&rsquo;re offline. Signing in needs a connection.
+            </p>
+          )}
         </form>
 
         <p className="mt-6 text-center text-xs text-muted">

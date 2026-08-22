@@ -12,7 +12,14 @@ import type { ActionState } from "@/app/prospect-actions";
 
 function fail(error: unknown): ActionState {
   if (error instanceof ApiError) return { ok: false, message: error.message };
-  return { ok: false, message: "Something went wrong. Please try again." };
+  /* Not an ApiError, so the API never answered -- the usual causes are the
+     API container being down or the network dropping mid-request. Naming the
+     connection points at the actual fix instead of leaving the user to
+     re-check their input. */
+  return {
+    ok: false,
+    message: "Couldn't reach the server. Check your connection and try again.",
+  };
 }
 
 function refreshAutomation(sequenceId?: string) {

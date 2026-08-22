@@ -58,7 +58,19 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Static assets stay open -- the login page itself needs the CSS and the
-  // favicon, and none of it is data.
-  matcher: ["/((?!_next/static|_next/image|icon.svg|favicon.ico).*)"],
+  /* Static assets stay open -- the login page itself needs the CSS and the
+     favicon, and none of it is data.
+   *
+   * The install surface has to be open too, and it is easy to get wrong: a
+   * gated /sw.js answers the browser's fetch with a 307 to /login, which
+   * fails service-worker registration silently -- no error, the app simply
+   * never installs. Same for the manifest and the icons, which the OS
+   * requests with no cookie attached at install time.
+   *
+   * Nothing here is data: an app name, a colour, six PNGs of the logo, and a
+   * worker that is forbidden from touching /api. Every real route stays gated.
+   */
+  matcher: [
+    "/((?!_next/static|_next/image|icon.svg|favicon.ico|favicon-32.png|manifest.webmanifest|sw.js|offline.html|apple-touch-icon.png|icon-192.png|icon-512.png|icon-maskable-192.png|icon-maskable-512.png|health$|.well-known).*)",
+  ],
 };
