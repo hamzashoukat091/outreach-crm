@@ -24,11 +24,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .catch(() => 0);
 
   return (
-    <div className="flex min-h-[100dvh] flex-col lg:flex-row">
+    <div className="flex min-h-full flex-col lg:flex-row">
       <aside
         className="sticky top-0 z-30 flex shrink-0 items-center gap-1 border-b border-line
           bg-surface/85 px-2 backdrop-blur-xl pt-[env(safe-area-inset-top)]
-          lg:h-[100dvh] lg:w-60 lg:flex-col lg:items-stretch lg:gap-0 lg:border-b-0
+          lg:h-full lg:w-60 lg:flex-col lg:items-stretch lg:gap-0 lg:border-b-0
           lg:border-r lg:px-0 lg:pt-0"
       >
         <MobileNav pendingApprovals={pending} />

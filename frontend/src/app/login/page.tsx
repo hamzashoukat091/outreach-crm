@@ -47,13 +47,13 @@ function LoginForm() {
   return (
     <div
       /* Centred, with the safe-area insets as padding rather than as a top
-         offset. justify-center plus min-h means the card sits in the middle
-         of whatever height the viewport actually has, and 100dvh shrinks
-         when the keyboard opens, so the card rides up with it instead of
-         being pushed off the bottom. py- (not pt-) keeps it centred within
-         the padded box; padding only one side would re-introduce the drift
-         that made it look pinned to the top. */
-      className="flex min-h-[100dvh] flex-col justify-center px-5
+         offset. min-h-full fills the body -- which owns the viewport height --
+         rather than declaring 100dvh a second time; stacking two viewport
+         boxes agrees in a browser but overflows inside the Android app,
+         where dvh measures the larger viewport. py- (not pt-) keeps the card
+         centred within the padded box; padding one side only would bring
+         back the drift that made it look pinned to the top. */
+      className="flex min-h-full flex-col justify-center px-5
         py-[max(2rem,env(safe-area-inset-top),env(safe-area-inset-bottom))]"
     >
       <div className="mx-auto w-full max-w-sm animate-fade-up">

@@ -58,8 +58,14 @@ export const viewport: Viewport = {
    guards would look absurd. */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="min-h-[100dvh] font-sans antialiased">
+    <html lang="en" className={`h-full ${inter.variable}`}>
+      {/* h-full (with html h-full below) rather than min-h-[100dvh] on both
+          body and the page inside it. Two stacked 100dvh boxes agree in a
+          browser, where dvh equals the visible area -- but inside the Android
+          app dvh is measured against the larger viewport, so the inner box
+          overrun the visible height and the login page gained a scrollbar
+          it did not need. One owner of the height, one source of truth. */}
+      <body className="h-full font-sans antialiased">
         {/* Wraps everything, including /login: signing in needs the server
             just as much as the rest of the app does. */}
         <ConnectivityProvider>
