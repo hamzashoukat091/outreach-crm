@@ -59,3 +59,10 @@ desktop.ini
 
 # ---- Local tooling ----
 .claude/
+
+# Android signing material. The keystore IS the app's identity -- publishing it
+# would let anyone ship an update that Android accepts as genuine, and the repo
+# is public.
+android/*.keystore
+android/*.jks
+android/twa-manifest.json

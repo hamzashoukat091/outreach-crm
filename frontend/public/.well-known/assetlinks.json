@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "ai.openval.outreach.twa",
+      "sha256_cert_fingerprints": [
+        "9A:25:46:4C:4E:4A:3D:4F:4E:BB:0F:4C:86:0C:17:2E:AA:1A:28:D3:B9:B0:A9:98:39:BD:8C:5B:E7:9C:13:74"
+      ]
+    }
+  }
+]
