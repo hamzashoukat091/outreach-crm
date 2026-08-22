@@ -91,6 +91,36 @@ Output: `android/app/build/outputs/apk/release/app-release.apk`
 Bump `appVersionCode` in `android/twa-manifest.json` first, or Android will
 refuse to install over the existing app.
 
+### If you change the icon, splash, name or start URL
+
+Those live in `twa-manifest.json` and need the project regenerated:
+
+```bash
+cd android
+npx @bubblewrap/cli update --skipVersionUpgrade
+```
+
+**This overwrites `app/build.gradle`** and takes the signing config and
+`minifyEnabled false` with it. Put both back before building, or the build
+fails on a Windows path error inside R8 — and if it did succeed it would
+produce an unsigned APK that no phone will install. Check with:
+
+```bash
+grep -n "signingConfig\|minifyEnabled" android/app/build.gradle
+```
+
+Also note the splash image is fetched from the live URL at generate time, so
+deploy the site first — a gated or missing image fails the build quietly.
+
+**The splash image needs padding baked in.** `iconUrl` feeds both the launcher
+icon and the splash, and androidbrowserhelper draws the splash centred at its
+natural density size with no scaling. The launcher icon must fill its tile, so
+a single full-bleed source gives a correct icon and a splash logo about twice
+the size it should be. After regenerating, overwrite the five
+`res/drawable-*/splash.png` files from `frontend/public/splash-icon.png`,
+which carries the same mark at ~42% of the canvas. Verify: splash should
+measure ~43% ink coverage, launcher icons 100%.
+
 ### The keystore
 
 `android/outreach-release.keystore` is **gitignored and must stay that way**.
