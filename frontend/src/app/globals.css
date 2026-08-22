@@ -55,12 +55,14 @@
 }
 
 html {
-  /* Kills Chrome's pull-to-refresh. In a browser tab that gesture is
-     expected; in an installed app it is not -- swiping down at the top of a
-     list bounces the whole page and can reload it mid-edit, which for a form
-     of unsaved draft text is destructive rather than merely surprising.
-     `contain` keeps normal scrolling and only stops the overscroll action,
-     and it also prevents scroll chaining out of the drawer and modals. */
+  /* Suppresses Chrome's own pull-to-refresh -- not the gesture, the browser's
+     implementation of it. The native one bounces the whole page and reloads
+     the document, losing the app shell and any unsaved text with it.
+     PullToRefresh replaces it with the same gesture calling router.refresh(),
+     which re-runs the server components in place.
+
+     `contain` keeps normal scrolling and only stops the overscroll action; it
+     also prevents scroll chaining out of the drawer and modals. */
   overscroll-behavior-y: contain;
 }
 
