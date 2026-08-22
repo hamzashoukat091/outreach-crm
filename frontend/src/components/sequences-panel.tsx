@@ -17,24 +17,26 @@ export function SequencesPanel({ sequences }: { sequences: AutomationSequence[] 
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Link href="/sequences" className="btn-primary h-9">
-          Sequences
-        </Link>
-        <Link href="/sequences/enrollments" className="btn-secondary h-9">
-          Enrollments
-        </Link>
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex gap-2">
+          <Link href="/sequences" className="btn-primary h-9 flex-1 sm:flex-none">
+            Sequences
+          </Link>
+          <Link href="/sequences/enrollments" className="btn-secondary h-9 flex-1 sm:flex-none">
+            Enrollments
+          </Link>
+        </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:ml-auto">
           <button
             onClick={() => setMode(mode === "blank" ? "idle" : "blank")}
-            className="btn-secondary h-9"
+            className="btn-secondary h-9 flex-1 sm:flex-none"
           >
             {mode === "blank" ? "Cancel" : "New sequence"}
           </button>
           <button
             onClick={() => setMode(mode === "templates" ? "idle" : "templates")}
-            className="btn-primary h-9"
+            className="btn-primary h-9 flex-1 sm:flex-none"
           >
             {mode === "templates" ? "Close templates" : "Templates"}
           </button>

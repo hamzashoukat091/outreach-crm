@@ -92,7 +92,7 @@ export function ProspectToolbar({
         <select
           defaultValue={params.get("status") ?? ""}
           onChange={(e) => setParam("status", e.target.value)}
-          className="input min-h-11 w-full text-sm sm:h-9 sm:w-auto sm:py-0"
+          className="input min-h-11 w-full min-w-0 text-sm sm:h-9 sm:w-auto sm:py-0"
         >
           <option value="">All statuses</option>
           {STATUSES.map((s) => (
@@ -126,7 +126,7 @@ export function ProspectToolbar({
           <select
             defaultValue={params.get("category") ?? ""}
             onChange={(e) => setParam("category", e.target.value)}
-            className="input min-h-11 w-full text-sm sm:h-9 sm:w-auto sm:py-0"
+            className="input min-h-11 w-full min-w-0 text-sm sm:h-9 sm:w-auto sm:py-0"
           >
             <option value="">All categories</option>
             {categories.map((c) => (
@@ -141,7 +141,7 @@ export function ProspectToolbar({
           <select
             defaultValue={params.get("seniority") ?? ""}
             onChange={(e) => setParam("seniority", e.target.value)}
-            className="input min-h-11 w-full text-sm sm:h-9 sm:w-auto sm:py-0"
+            className="input min-h-11 w-full min-w-0 text-sm sm:h-9 sm:w-auto sm:py-0"
           >
             <option value="">All seniority</option>
             {seniorities.map((s) => (
@@ -152,8 +152,8 @@ export function ProspectToolbar({
           </select>
         )}
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <label className="btn-secondary h-9 cursor-pointer">
+        <div className="col-span-2 flex items-center gap-2 sm:col-span-1 sm:ml-auto sm:shrink-0">
+          <label className="btn-secondary h-9 flex-1 cursor-pointer whitespace-nowrap sm:flex-none">
             Import CSV
             <input
               type="file"
@@ -168,7 +168,7 @@ export function ProspectToolbar({
           </label>
           <button
             onClick={() => setShowAdd((v) => !v)}
-            className="btn-primary h-9"
+            className="btn-primary h-9 flex-1 whitespace-nowrap sm:flex-none"
           >
             {showAdd ? "Cancel" : "Add prospect"}
           </button>
