@@ -19,29 +19,39 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           backdrop-blur-xl lg:h-[100dvh] lg:w-60 lg:shrink-0 lg:border-b-0 lg:border-r
           pt-[env(safe-area-inset-top)] lg:pt-0"
       >
-        <div className="flex items-center gap-2.5 px-4 py-2 lg:px-5 lg:py-5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-solid text-white shadow-glow lg:h-9 lg:w-9 lg:rounded-[10px]">
-            <Logo className="h-5 w-5 lg:h-[22px] lg:w-[22px]" />
-          </div>
-          <div className="min-w-0">
-            <Link
-              href="/prospects"
-              className="block truncate text-sm font-semibold tracking-tight text-ink"
-            >
-              Outreach
-            </Link>
-            <p className="hidden text-xs text-muted lg:block">Outreach CRM</p>
+        {/* One row on mobile: brand, scrolling nav, status. Two rows cost
+            17% of a phone screen on every page. On desktop this reverts to a
+            stacked brand block above a vertical nav. */}
+        <div className="flex items-center gap-2 px-3 lg:flex-col lg:items-stretch lg:gap-0 lg:px-0">
+          <Link
+            href="/prospects"
+            aria-label="Outreach home"
+            className="flex shrink-0 items-center gap-2.5 py-2 lg:px-5 lg:py-5"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-solid text-white shadow-glow lg:h-9 lg:w-9 lg:rounded-[10px]">
+              <Logo className="h-5 w-5 lg:h-[22px] lg:w-[22px]" />
+            </span>
+            {/* The wordmark is redundant beside the mark on a phone and the
+                row has no width to spare. */}
+            <span className="hidden min-w-0 lg:block">
+              <span className="block truncate text-sm font-semibold tracking-tight text-ink">
+                Outreach
+              </span>
+              <span className="block text-xs text-muted">Outreach CRM</span>
+            </span>
+          </Link>
+
+          {/* min-w-0 lets the strip shrink and scroll instead of pushing the
+              status controls off the edge. */}
+          <div className="min-w-0 flex-1 lg:w-full lg:flex-none">
+            <NavLinks />
           </div>
 
-          {/* On mobile these ride the brand row instead of consuming two more
-              stacked blocks below the nav. */}
-          <div className="ml-auto flex items-center gap-1 lg:hidden">
+          <div className="flex shrink-0 items-center gap-1 lg:hidden">
             <LiveIndicator compact />
             <SignOutButton compact />
           </div>
         </div>
-
-        <NavLinks />
 
         <div className="mt-auto hidden lg:block">
           <LiveIndicator />
