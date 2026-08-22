@@ -78,8 +78,12 @@ export default async function AnalyticsPage() {
         <StatCard label="Prospects" value={stats.total_prospects} />
         <StatCard
           label="Data completeness"
-          value={`${stats.data_completeness}%`}
-          hint={`${stats.incomplete} missing company info`}
+          value={stats.total_prospects > 0 ? `${stats.data_completeness}%` : "—"}
+          hint={
+            stats.total_prospects > 0
+              ? `${stats.incomplete} missing company info`
+              : "no prospects yet"
+          }
         />
         <StatCard
           label="Emails sent"
