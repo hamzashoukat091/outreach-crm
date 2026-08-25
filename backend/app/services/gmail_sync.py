@@ -19,12 +19,14 @@ from sqlalchemy.orm import Session
 from app.core.config import settings as env_settings
 from app.models import (
     EmailMessage,
+    EnrollmentState,
     GmailAccount,
     Message,
     MessageDirection,
     MessageKind,
     MessageState,
     Prospect,
+    SequenceEnrollment,
 )
 from app.services.gmail import (
     GmailAuthError,
@@ -153,6 +155,61 @@ def _already_in_pipeline(db: Session, parsed: ParsedEmail, row: EmailMessage) ->
     return False
 
 
+def _match_enrollment(
+    db: Session, parsed: ParsedEmail, prospect_id
+) -> SequenceEnrollment | None:
+    """The sequence run this reply belongs to, if any.
+
+    Thread id first: Google assigns it and it is exact, where RFC header
+    parsing is a reconstruction. The header route stays as a fallback for
+    mail that reached the thread from outside Gmail, and the newest open
+    enrollment last, for clients that strip threading headers entirely.
+
+    Without this the reply is stored but detached: approvals cannot show what
+    it answers, the conversation view has no thread, and -- worst -- the
+    sequence keeps running, so someone who replied still receives the
+    "you did not reply" follow-up.
+    """
+    ours = db.scalar(
+        select(Message)
+        .where(
+            Message.gmail_thread_id == parsed.gmail_thread_id,
+            Message.enrollment_id.isnot(None),
+        )
+        .order_by(Message.created_at.desc())
+    )
+    if ours is not None:
+        return ours.enrollment
+
+    ref_ids = [r.strip() for r in (parsed.references or "").split() if r.strip()]
+    if parsed.in_reply_to:
+        ref_ids.insert(0, parsed.in_reply_to.strip())
+    if ref_ids:
+        ours = db.scalar(
+            select(Message)
+            .where(
+                Message.rfc_message_id.in_(ref_ids),
+                Message.enrollment_id.isnot(None),
+            )
+            .order_by(Message.created_at.desc())
+        )
+        if ours is not None:
+            return ours.enrollment
+
+    if prospect_id is None:
+        return None
+    return db.scalar(
+        select(SequenceEnrollment)
+        .where(
+            SequenceEnrollment.prospect_id == prospect_id,
+            SequenceEnrollment.state.in_(
+                (EnrollmentState.active, EnrollmentState.paused)
+            ),
+        )
+        .order_by(SequenceEnrollment.enrolled_at.desc())
+    )
+
+
 def to_inbound_message(db: Session, row: EmailMessage, parsed: ParsedEmail) -> Message | None:
     """Create the pipeline row for a prospect reply, or None.
 
@@ -165,8 +222,13 @@ def to_inbound_message(db: Session, row: EmailMessage, parsed: ParsedEmail) -> M
     if _already_in_pipeline(db, parsed, row):
         return None
 
+    enrollment = _match_enrollment(db, parsed, row.prospect_id)
+
     message = Message(
         prospect_id=row.prospect_id,
+        # Via the relationship so an already-loaded enrollment.messages sees
+        # it without a round-trip -- handle_inbound reads that collection.
+        enrollment=enrollment,
         direction=MessageDirection.inbound,
         kind=MessageKind.incoming,
         state=MessageState.received,
