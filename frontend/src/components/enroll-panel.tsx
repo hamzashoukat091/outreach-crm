@@ -234,8 +234,8 @@ export function EnrollPanel({
             className="mt-2 w-full rounded-lg border border-accent/30 bg-accent-soft px-3 py-2 text-left text-xs text-ink hover:bg-accent-soft/70"
           >
             <strong>{waiting.length}</strong> prospect
-            {waiting.length === 1 ? " is" : "s are"} handed off but not enrolled
-            anywhere — select {waiting.length === 1 ? "it" : "them"}
+            {waiting.length === 1 ? " is" : "s are"} ready to enroll and not in
+            a sequence yet — select {waiting.length === 1 ? "it" : "them"}
           </button>
         )}
 

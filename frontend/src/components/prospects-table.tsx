@@ -402,9 +402,12 @@ export function ProspectsTable({
                         </p>
                       </div>
                     ) : (
-                      <span className="text-xs text-amber-600">
-                        Automated — not enrolled
-                      </span>
+                      // "Automated" is only the ownership flag; nothing is
+                      // scheduled until an enrollment exists. Naming the
+                      // next action beats naming the internal state, and
+                      // amber implied a problem where there is none -- every
+                      // new prospect starts here.
+                      <span className="text-xs text-muted">Ready to enroll</span>
                     )}
                   </td>
                 </tr>
