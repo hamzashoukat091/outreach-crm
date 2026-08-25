@@ -42,10 +42,13 @@ export const NAV_ICONS: Record<string, () => React.ReactElement> = {
       <path d="M6.5 4.5h4a3 3 0 013 3v.5M6.5 15.5h4a3 3 0 003-3V12" />
     </Svg>
   ),
+  // Two overlapping bubbles: a back-and-forth, which is what Conversations
+  // is. The old inbox tray sat next to Mailbox's envelope as two rounded
+  // boxes and the pair was indistinguishable at 18px.
   inbox: () => (
     <Svg>
-      <path d="M2.5 10.5h4l1.2 2h4.6l1.2-2h4" />
-      <path d="M4.2 4.5h11.6l1.7 6v5a2 2 0 01-2 2H4.5a2 2 0 01-2-2v-5z" />
+      <path d="M12.5 12.5h-4l-3.2 2.6v-2.6H4a1.5 1.5 0 01-1.5-1.5V4a1.5 1.5 0 011.5-1.5h8.5A1.5 1.5 0 0114 4v7a1.5 1.5 0 01-1.5 1.5z" />
+      <path d="M16.5 6.5A1.5 1.5 0 0118 8v6.5a1.5 1.5 0 01-1.5 1.5H16v2l-2.5-2" />
     </Svg>
   ),
   mailbox: () => (
