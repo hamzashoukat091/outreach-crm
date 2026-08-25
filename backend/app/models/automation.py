@@ -293,6 +293,14 @@ class Message(Base):
     references: Mapped[str | None] = mapped_column(Text)
     dedupe_key: Mapped[str | None] = mapped_column(String(400))
 
+    # Gmail linkage. email_message_id points at the stored email this pipeline
+    # row came from (inbound only); gmail_thread_id is denormalised so reply
+    # matching can thread by Google's own id without a join -- see 0010.
+    email_message_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("email_messages.id", ondelete="SET NULL"), index=True
+    )
+    gmail_thread_id: Mapped[str | None] = mapped_column(String(64), index=True)
+
     scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

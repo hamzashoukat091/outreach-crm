@@ -11,7 +11,11 @@ import type {
   EnrollmentDetail,
   EnrollmentRow,
   EnrollResponse,
+  GmailStatus,
   InboxItem,
+  MailDetail,
+  MailFilter,
+  MailListItem,
   MessageList,
   SenderFacts,
   SequenceStep,
@@ -491,4 +495,20 @@ export const api = {
     request<AutomationAnalytics>("/api/automation/analytics"),
 
   automationStatus: () => request<AutomationStatus>("/api/automation/status"),
+
+  // ---------- Gmail mailbox ----------
+
+  mailStatus: () => request<GmailStatus>("/api/mail/status"),
+
+  mail: (filter: MailFilter = "prospects", search?: string, limit = 50) => {
+    const params = new URLSearchParams({ filter, limit: String(limit) });
+    if (search) params.set("search", search);
+    return request<MailListItem[]>(`/api/mail?${params}`);
+  },
+
+  mailDetail: (id: string, images = false) =>
+    request<MailDetail>(`/api/mail/${id}${images ? "?images=true" : ""}`),
+
+  syncMail: () =>
+    request<{ new_pipeline_messages: number }>("/api/mail/sync", { method: "POST" }),
 };

@@ -306,3 +306,50 @@ export interface AuthSessionInfo {
   ip: string | null;
   current: boolean;
 }
+
+// ---------- Gmail mailbox ----------
+
+/** One email in the stored mailbox. Most have no prospect attached. */
+export interface MailListItem {
+  id: string;
+  gmail_id: string;
+  gmail_thread_id: string;
+  from_address: string | null;
+  from_name: string | null;
+  to_addresses: string[];
+  subject: string | null;
+  snippet: string | null;
+  is_unread: boolean;
+  is_sent: boolean;
+  has_attachments: boolean;
+  internal_date: string;
+  prospect_id: string | null;
+  prospect_name: string | null;
+  /** True when this email also exists as a CRM pipeline row. */
+  in_pipeline: boolean;
+}
+
+export interface MailDetail extends MailListItem {
+  body_text: string | null;
+  /** Server-sanitised. Never render body_html raw -- see html_sanitize.py. */
+  body_html_safe: string;
+  blocked_images: number;
+  cc_addresses: string[];
+  reply_to: string | null;
+  attachments: { filename: string; mime_type: string; size: number }[];
+  label_ids: string[];
+}
+
+export interface GmailStatus {
+  connected: boolean;
+  configured: boolean;
+  email_address: string | null;
+  last_synced_at: string | null;
+  last_error: string | null;
+  history_id: number | null;
+  total_emails: number;
+  unread_count: number;
+  full_sync_count: number;
+}
+
+export type MailFilter = "all" | "prospects" | "unread" | "sent";

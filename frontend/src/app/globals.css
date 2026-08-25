@@ -266,3 +266,27 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Rendered email bodies. Email HTML assumes a white desktop client and a
+   fixed width; without these, tables blow out the layout on a phone and
+   hard-coded dark text vanishes against a dark background. */
+.email-html {
+  overflow-x: auto;
+  word-break: break-word;
+}
+.email-html :is(table, img) {
+  max-width: 100%;
+  height: auto;
+}
+.email-html a {
+  @apply text-accent underline;
+}
+.email-html :is(p, div, td) {
+  /* Senders inline their own colours; forcing inherit keeps text readable in
+     dark mode instead of black-on-near-black. */
+  color: inherit !important;
+  background: transparent !important;
+}
+.email-html blockquote {
+  @apply my-2 border-l-2 border-line pl-3 text-muted;
+}

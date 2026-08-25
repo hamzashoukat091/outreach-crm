@@ -11,6 +11,7 @@ from app.api import (
     automation_sequences,
     dashboard,
     drafts,
+    mail,
     prospects,
     sender,
     strategies,
@@ -51,6 +52,7 @@ app.include_router(analytics.router)
 app.include_router(automation_sequences.router)
 app.include_router(automation_messages.router)
 app.include_router(automation_admin.router)
+app.include_router(mail.router)
 
 
 @app.get("/health", tags=["ops"])

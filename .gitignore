@@ -7,6 +7,14 @@
 *.key
 secrets.json
 
+# Google OAuth client files. The downloaded JSON carries the client secret,
+# and the token file carries a refresh token that reads the whole mailbox.
+client_secret*.json
+*client_secret*.json
+backend/secrets/
+*credentials*.json
+gmail_token.json
+
 # ---- Python ----
 __pycache__/
 *.py[cod]

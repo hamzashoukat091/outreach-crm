@@ -19,6 +19,7 @@ from app.models.automation import (  # noqa: F401
     Suppression,
     SuppressionReason,
 )
+from app.models.gmail import EmailMessage, GmailAccount  # noqa: F401
 from app.models.prospects import (  # noqa: F401
     DraftStatus,
     EmailDraft,

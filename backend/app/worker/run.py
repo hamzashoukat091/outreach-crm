@@ -37,6 +37,7 @@ from app.services.automation_settings import (
     within_send_window,
 )
 from app.services.generator import GenerationError
+from app.services.gmail import GmailAuthError, GmailError
 from app.services.inbox import get_inbox_source, ingest
 from app.services.replier import handle_inbound
 from app.services.sequencer import SEQUENCE_KINDS, advance, draft_message, log_event
@@ -223,6 +224,65 @@ def poll_inbox() -> None:
                 logger.exception("failed handling inbound %s", inbound.message_id)
 
 
+_last_gmail_sync: datetime | None = None
+
+
+def sync_gmail() -> None:
+    """Phase D: pull new mail from Gmail and hand replies to the replier.
+
+    Self-throttled like poll_inbox rather than given its own scheduler: the
+    worker already ticks, and a second process for one API call every five
+    minutes is a container to deploy, monitor and restart for no gain.
+    """
+    global _last_gmail_sync
+    now = datetime.now(timezone.utc)
+    if _last_gmail_sync and (
+        now - _last_gmail_sync
+    ).total_seconds() < settings.gmail_sync_interval_seconds:
+        return
+
+    from app.services import gmail_sync as gmail_sync_service
+    from app.services.gmail import GmailClient
+
+    client = GmailClient()
+    if not client.configured:
+        return  # not connected; nothing to do, and not an error
+    _last_gmail_sync = now
+
+    with SessionLocal() as db:
+        try:
+            inbound = gmail_sync_service.sync(db, client)
+            db.commit()
+        except GmailAuthError:
+            # Not retryable. The account row now carries the reason, which
+            # the UI shows as "reconnect Gmail".
+            db.commit()
+            logger.exception("gmail auth failed; sync paused until reconnected")
+            return
+        except GmailError:
+            db.commit()
+            logger.exception("gmail sync failed; will retry next interval")
+            return
+        except Exception:
+            db.rollback()
+            logger.exception("unexpected error during gmail sync")
+            return
+
+        if not inbound:
+            return
+
+        settings_row = get_settings_row(db)
+        for message in inbound:
+            try:
+                handle_inbound(db, message, settings_row)
+                db.commit()
+            except Exception:
+                # One unclassifiable reply must not block the others; the row
+                # is already stored, so nothing is lost.
+                db.rollback()
+                logger.exception("failed handling gmail inbound %s", message.id)
+
+
 def main() -> int:
     signal.signal(signal.SIGTERM, _shutdown)
     signal.signal(signal.SIGINT, _shutdown)
@@ -234,7 +294,13 @@ def main() -> int:
     )
 
     while _running:
-        for phase in (_heartbeat, draft_due_messages, send_due_messages, poll_inbox):
+        for phase in (
+            _heartbeat,
+            draft_due_messages,
+            send_due_messages,
+            poll_inbox,
+            sync_gmail,
+        ):
             if not _running:
                 break
             try:

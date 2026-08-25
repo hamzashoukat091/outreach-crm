@@ -5,6 +5,9 @@ export const NAV_LINKS = [
   { href: "/prospects", label: "Prospects", icon: "prospects" },
   { href: "/sequences", label: "Sequences", icon: "sequences" },
   { href: "/inbox", label: "Inbox", icon: "inbox" },
+  // The Gmail mailbox itself, as opposed to /inbox which shows only the
+  // conversations that entered the CRM pipeline.
+  { href: "/mailbox", label: "Mailbox", icon: "mailbox" },
   // Approvals gates whether replies go out at all. It was reachable only by
   // typing the URL, which meant held emails could sit unseen indefinitely.
   { href: "/approvals", label: "Approvals", icon: "approvals", badge: "approvals" as const },

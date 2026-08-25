@@ -48,6 +48,12 @@ export const NAV_ICONS: Record<string, () => React.ReactElement> = {
       <path d="M4.2 4.5h11.6l1.7 6v5a2 2 0 01-2 2H4.5a2 2 0 01-2-2v-5z" />
     </Svg>
   ),
+  mailbox: () => (
+    <>
+      <rect x="2.5" y="4.5" width="15" height="11" rx="2" />
+      <path d="M3 6l7 5 7-5" />
+    </>
+  ),
   approvals: () => (
     <Svg>
       <path d="M10 2.5l6.5 2.6v4.6c0 3.6-2.6 6.6-6.5 7.8-3.9-1.2-6.5-4.2-6.5-7.8V5.1z" />

@@ -35,6 +35,23 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:3000"
 
+    # Gmail. Empty means the sync phase is a no-op rather than an error, the
+    # same way an unconfigured IMAP host is. Credentials come from .env only
+    # -- the repo is public and these read a real mailbox.
+    gmail_client_id: str = ""
+    gmail_client_secret: str = ""
+    gmail_refresh_token: str = ""
+    gmail_address: str = ""
+    # Gmail App Password for SMTP. Gmail refuses the account password, and
+    # OAuth covers reading only -- sending needs this separately.
+    smtp_app_password: str = ""
+    # How far back the first sync reaches, and every full re-sync after a
+    # cursor expiry. Gmail keeps history ~1 week, so this is not a one-off.
+    gmail_initial_sync_days: int = 30
+    gmail_sync_interval_seconds: int = 300
+    # Ceiling on one full sync, so a large mailbox cannot pin the worker.
+    gmail_max_full_sync: int = 500
+
     # The login. Empty means the gate refuses everyone rather than admitting
     # everyone -- fail closed, not open, if the env goes missing.
     auth_username: str = ""

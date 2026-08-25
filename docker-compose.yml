@@ -41,6 +41,13 @@ services:
       # The login. Read from .env; an empty value locks the gate shut.
       AUTH_USERNAME: ${AUTH_USERNAME:-}
       AUTH_PASSWORD: ${AUTH_PASSWORD:-}
+      # Gmail sync. Read from .env -- never commit these; they open a real
+      # mailbox and this repo is public.
+      GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID:-}
+      GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET:-}
+      GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN:-}
+      GMAIL_ADDRESS: ${GMAIL_ADDRESS:-}
+      SMTP_APP_PASSWORD: ${SMTP_APP_PASSWORD:-}
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
@@ -67,6 +74,12 @@ services:
       # The worker now drafts emails and classifies replies itself.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
+      # Gmail sync runs in the worker. Read from .env -- never commit these.
+      GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID:-}
+      GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET:-}
+      GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN:-}
+      GMAIL_ADDRESS: ${GMAIL_ADDRESS:-}
+      SMTP_APP_PASSWORD: ${SMTP_APP_PASSWORD:-}
     depends_on:
       # Waits for the API so migrations have run before the first tick.
       api:
