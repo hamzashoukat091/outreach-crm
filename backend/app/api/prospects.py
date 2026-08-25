@@ -104,7 +104,7 @@ def _attach_enrollments(db: Session, items: list[ProspectOut]) -> None:
             # "Step 1 of 6" on a three-step sequence with two messages sent,
             # and grew as the run progressed.
             select(func.count(SequenceStep.id))
-            .where(SequenceStep.sequence_id == Sequence.id)
+            .where(SequenceStep.sequence_id == SequenceEnrollment.sequence_id)
             .scalar_subquery()
             .label("total_steps"),
             func.min(
@@ -126,6 +126,8 @@ def _attach_enrollments(db: Session, items: list[ProspectOut]) -> None:
             SequenceEnrollment.prospect_id,
             SequenceEnrollment.state,
             SequenceEnrollment.current_position,
+            # Grouped so the total_steps subquery above can correlate on it.
+            SequenceEnrollment.sequence_id,
             Sequence.name,
         )
         .order_by(
