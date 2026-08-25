@@ -253,6 +253,8 @@ export interface AutomationAnalytics {
   active_enrollments: number;
   total_sent: number;
   replies_received: number;
+  prospects_contacted: number;
+  prospects_replied: number;
   reply_rate: number;
   pending_approvals: number;
   sends_today: number;

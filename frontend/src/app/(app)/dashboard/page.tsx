@@ -131,7 +131,10 @@ export default async function DashboardPage() {
               ? undefined
               : automation.total_sent === 0
               ? "no automated sends yet"
-              : `${automation.replies_received} of ${automation.total_sent} sent`
+              : // People, matching the percentage above. "of N sent" paired a
+                // per-prospect rate with a message count, so a 3-step
+                // sequence made the denominator look three times too big.
+                `${automation.prospects_replied} of ${automation.prospects_contacted} prospects replied`
           }
         />
       </div>

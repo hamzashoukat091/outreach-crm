@@ -18,7 +18,10 @@ export function ApprovalCard({ item }: { item: ApprovalItem }) {
   const { message, trigger } = item;
   const [subject, setSubject] = useState(message.subject ?? "");
   const [body, setBody] = useState(message.body ?? "");
-  const [showInbound, setShowInbound] = useState(false);
+  // Open by default: this is the email being answered, and approving a reply
+  // without reading what it replies to is the one thing this page exists to
+  // prevent. Collapsing stays available for long quoted threads.
+  const [showInbound, setShowInbound] = useState(true);
   const [pending, startTransition] = useTransition();
   const { toast, show } = useToast();
   const router = useRouter();

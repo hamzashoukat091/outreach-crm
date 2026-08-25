@@ -364,6 +364,11 @@ class AutomationAnalytics(BaseModel):
     active_enrollments: int
     total_sent: int
     replies_received: int
+    # The rate is people, not messages: a three-step sequence sends three
+    # emails to one prospect. Exposed so the UI can caption it truthfully
+    # instead of pairing a per-prospect percentage with a message count.
+    prospects_contacted: int = 0
+    prospects_replied: int = 0
     reply_rate: float
     pending_approvals: int
     sends_today: int
