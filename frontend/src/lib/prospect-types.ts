@@ -203,6 +203,10 @@ export interface Analytics {
   top_intent_topics: { label: string; count: number }[];
   total_drafts: number;
   approved_drafts: number;
+  /** Sent by the automation engine, as opposed to approved manual drafts. */
+  automation_sent: number;
+  /** Distinct prospects emailed by either pipeline -- the reply-rate denominator. */
+  contacted_prospects: number;
   approval_rate: number;
   replied_count: number;
   reply_rate: number;

@@ -327,6 +327,10 @@ class ProspectAnalytics(BaseModel):
 
     total_drafts: int
     approved_drafts: int
+    # Sent by the automation engine, as opposed to approved manual drafts.
+    automation_sent: int = 0
+    # Distinct prospects emailed by either pipeline -- the reply-rate denominator.
+    contacted_prospects: int = 0
     approval_rate: float
     replied_count: int
     reply_rate: float

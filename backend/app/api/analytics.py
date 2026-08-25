@@ -8,7 +8,15 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
-from app.models import DraftStatus, EmailDraft, Prospect, ProspectStatus
+from app.models import (
+    DraftStatus,
+    EmailDraft,
+    Message,
+    MessageDirection,
+    MessageState,
+    Prospect,
+    ProspectStatus,
+)
 from app.schemas.prospects import (
     CategoryPerformance,
     DayCount,
@@ -143,16 +151,36 @@ def get_analytics(days: int = Query(30, ge=7, le=180), db: Session = Depends(get
     approval_rate = round((approved / total_drafts) * 100, 1) if total_drafts else 0.0
 
     replied = sum(status_counts.get(s, 0) for s in POSITIVE)
-    # Reply rate is measured against prospects actually emailed.
-    contacted = (
-        db.scalar(
-            select(func.count(func.distinct(EmailDraft.prospect_id))).where(
+    # Reply rate is measured against prospects actually emailed -- by either
+    # pipeline. Counting only approved drafts reported "nothing sent yet" on
+    # an account whose every send went out through automation.
+    contacted_ids = set(
+        db.scalars(
+            select(func.distinct(EmailDraft.prospect_id)).where(
                 EmailDraft.status == DraftStatus.approved
+            )
+        ).all()
+    ) | set(
+        db.scalars(
+            select(func.distinct(Message.prospect_id)).where(
+                Message.direction == MessageDirection.outbound,
+                Message.state == MessageState.sent,
+            )
+        ).all()
+    )
+    contacted = len(contacted_ids)
+    reply_rate = round((replied / contacted) * 100, 1) if contacted else 0.0
+
+    # Emails that actually went out, both pipelines.
+    automation_sent = (
+        db.scalar(
+            select(func.count(Message.id)).where(
+                Message.direction == MessageDirection.outbound,
+                Message.state == MessageState.sent,
             )
         )
         or 0
     )
-    reply_rate = round((replied / contacted) * 100, 1) if contacted else 0.0
 
     # Does thin context actually produce worse emails? This is the question the
     # 40%-incomplete import raises, so measure it directly.
@@ -234,12 +262,25 @@ def get_analytics(days: int = Query(30, ge=7, le=180), db: Session = Depends(get
             )
         )
 
-    tokens = db.execute(
+    # Both pipelines burn tokens: the manual composer writes EmailDrafts, the
+    # engine writes Messages. Reporting only the first showed "0 in / 0 out"
+    # while the engine had spent thousands.
+    draft_tokens = db.execute(
         select(
             func.coalesce(func.sum(EmailDraft.input_tokens), 0),
             func.coalesce(func.sum(EmailDraft.output_tokens), 0),
         )
     ).one()
+    message_tokens = db.execute(
+        select(
+            func.coalesce(func.sum(Message.input_tokens), 0),
+            func.coalesce(func.sum(Message.output_tokens), 0),
+        )
+    ).one()
+    tokens = (
+        draft_tokens[0] + message_tokens[0],
+        draft_tokens[1] + message_tokens[1],
+    )
 
     return ProspectAnalytics(
         total_prospects=total,
@@ -254,6 +295,8 @@ def get_analytics(days: int = Query(30, ge=7, le=180), db: Session = Depends(get
         top_intent_topics=top_intent,
         total_drafts=total_drafts,
         approved_drafts=approved,
+        automation_sent=automation_sent,
+        contacted_prospects=contacted,
         approval_rate=approval_rate,
         replied_count=replied,
         reply_rate=reply_rate,

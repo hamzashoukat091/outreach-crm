@@ -112,10 +112,29 @@ export function EnrollmentsTable({
                     <EnrollmentStateBadge state={row.state} />
                   </td>
                   <td className="px-4 py-3 tabular-nums text-muted">
-                    step {row.current_position}/{row.total_steps}
+                    {/* current_position counts *completed* steps, so a run
+                        whose opener has not gone out yet sits at 0. "Step 0 of
+                        3" reads as broken; name the state instead. */}
+                    {row.current_position === 0
+                      ? "not started"
+                      : `step ${row.current_position}/${row.total_steps}`}
                   </td>
                   <td className="hidden px-4 py-3 text-xs text-muted lg:table-cell">
-                    {row.next_message_at ? formatDate(row.next_message_at) : "—"}
+                    {/* A scheduled time in the past means the send is due but
+                        held -- rate limit, closed window, or paused sending.
+                        Printing the stale timestamp alone reads as though the
+                        engine missed it. */}
+                    {row.next_message_at ? (
+                      new Date(row.next_message_at) < new Date() ? (
+                        <span className="text-amber-600" title={formatDate(row.next_message_at)}>
+                          Due — waiting to send
+                        </span>
+                      ) : (
+                        formatDate(row.next_message_at)
+                      )
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="hidden px-4 py-3 text-xs text-muted lg:table-cell">
                     {row.last_activity_at ? formatDate(row.last_activity_at) : "—"}

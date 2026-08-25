@@ -102,6 +102,11 @@ def draft_due_messages() -> None:
                 logger.exception("unexpected error drafting %s", message.id)
 
 
+# Last (hour, day) pair a rate-limit hold was logged for; cleared once a send
+# succeeds, so the next hold logs again.
+_rate_limit_logged: tuple[int, int] | None = None
+
+
 def send_due_messages() -> None:
     """Phase B: put scheduled messages on the wire, guardrails first."""
     now = datetime.now(timezone.utc)
@@ -151,13 +156,21 @@ def send_due_messages() -> None:
                 or daily_used >= settings_row.daily_send_limit
             ):
                 # Limits exhausted: leave the rest scheduled for the next tick.
-                logger.info(
-                    "rate limit reached (hour %s/%s, day %s/%s); pausing sends",
-                    hourly_used,
-                    settings_row.hourly_send_limit,
-                    daily_used,
-                    settings_row.daily_send_limit,
-                )
+                # Once per state change, not once per tick: at a 15s interval
+                # this printed the same line ~240 times an hour and buried
+                # anything worth reading.
+                global _rate_limit_logged
+                state = (hourly_used, daily_used)
+                if _rate_limit_logged != state:
+                    _rate_limit_logged = state
+                    logger.info(
+                        "rate limit reached (hour %s/%s, day %s/%s); holding sends "
+                        "until the limit resets",
+                        hourly_used,
+                        settings_row.hourly_send_limit,
+                        daily_used,
+                        settings_row.daily_send_limit,
+                    )
                 db.commit()
                 break
 
@@ -178,6 +191,7 @@ def send_due_messages() -> None:
 
             ok = smtp_sender.send(db, message, settings_row)
             if ok:
+                _rate_limit_logged = None
                 hourly_used += 1
                 daily_used += 1
                 if message.kind in SEQUENCE_KINDS and message.enrollment:

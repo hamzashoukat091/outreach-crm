@@ -85,17 +85,30 @@ export default async function AnalyticsPage() {
               : "no prospects yet"
           }
         />
+        {/* Both pipelines: approved manual drafts plus automation sends. This
+            page counted only the first, so an account running entirely on
+            automation read "0 sent / nothing sent yet". */}
         <StatCard
           label="Emails sent"
-          value={stats.approved_drafts}
-          hint={`${stats.total_drafts} generated`}
+          value={stats.approved_drafts + stats.automation_sent}
+          hint={
+            stats.automation_sent > 0 && stats.approved_drafts > 0
+              ? `${stats.automation_sent} automated · ${stats.approved_drafts} manual`
+              : stats.automation_sent > 0
+              ? `${stats.automation_sent} by the engine`
+              : `${stats.total_drafts} generated`
+          }
         />
         <StatCard
           label="Reply rate"
-          value={stats.approved_drafts > 0 ? `${stats.reply_rate}%` : "—"}
+          value={
+            stats.approved_drafts + stats.automation_sent > 0
+              ? `${stats.reply_rate}%`
+              : "—"
+          }
           hint={
-            stats.approved_drafts > 0
-              ? `${stats.replied_count} of ${stats.approved_drafts} replied`
+            stats.approved_drafts + stats.automation_sent > 0
+              ? `${stats.replied_count} of ${stats.contacted_prospects} contacted replied`
               : "nothing sent yet"
           }
         />
