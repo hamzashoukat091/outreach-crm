@@ -208,11 +208,19 @@ docker compose exec api python -m pytest tests/ -q
 
 `.env` is gitignored. Keep your API key there, never in `docker-compose.yml`.
 
+## Guides
+
+| | |
+|---|---|
+| [GMAIL.md](GMAIL.md) | Connecting the mailbox: OAuth for reading, App Password for sending, how sync works, and the setup traps |
+| [SCHEDULE.md](SCHEDULE.md) | The send window and rate limits, with the UTC offsets for every major market |
+| [DEPLOY.md](DEPLOY.md) | The production host, and what runs where |
+| [RUNBOOK.md](RUNBOOK.md) | When something is broken |
+| [MOBILE.md](MOBILE.md) | Installing the app on a phone |
+
 ## Not in this MVP
 
-**No auth — the API is unauthenticated, so don't expose it publicly as-is.**
-
-Also absent: open/click tracking, per-user ownership, A/B testing of strategies
+Absent: open/click tracking, per-user ownership, A/B testing of strategies
 on the same prospect, and automatic company enrichment for the thin rows. Bulk
 generation is capped at 25 per batch and runs synchronously — fine at this list
 size, but it would want a job queue before it scales much past a few hundred.
