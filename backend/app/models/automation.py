@@ -498,13 +498,6 @@ class AutomationSettings(Base):
     reply_to: Mapped[str | None] = mapped_column(String(320))
 
     # --- Inbound mail (reply detection) ---
-    imap_host: Mapped[str | None] = mapped_column(String(300))
-    imap_port: Mapped[int | None] = mapped_column(Integer)
-    imap_username: Mapped[str | None] = mapped_column(String(300))
-    imap_password: Mapped[str | None] = mapped_column(String(500))
-    imap_use_ssl: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    imap_folder: Mapped[str] = mapped_column(String(200), default="INBOX", nullable=False)
-    imap_poll_seconds: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
 
     # Stamped by the worker each tick. Kept on this row (rather than a separate
     # table) because the worker already reads it every loop; the status endpoint

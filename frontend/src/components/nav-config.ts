@@ -4,10 +4,11 @@ export const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/prospects", label: "Prospects", icon: "prospects" },
   { href: "/sequences", label: "Sequences", icon: "sequences" },
-  { href: "/inbox", label: "Inbox", icon: "inbox" },
-  // The Gmail mailbox itself, as opposed to /inbox which shows only the
-  // conversations that entered the CRM pipeline.
+  // Two mail pages, and the labels have to carry the difference: Mailbox is
+  // the Gmail account (every email), Conversations is the CRM pipeline (only
+  // prospects who replied, with classification and drafted replies).
   { href: "/mailbox", label: "Mailbox", icon: "mailbox" },
+  { href: "/inbox", label: "Conversations", icon: "inbox" },
   // Approvals gates whether replies go out at all. It was reachable only by
   // typing the URL, which meant held emails could sit unseen indefinitely.
   { href: "/approvals", label: "Approvals", icon: "approvals", badge: "approvals" as const },

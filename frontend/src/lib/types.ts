@@ -200,14 +200,7 @@ export interface AutomationSettings {
   from_name: string | null;
   reply_to: string | null;
   // Inbound email (IMAP)
-  imap_host: string | null;
-  imap_port: number | null;
-  imap_username: string | null;
-  imap_use_ssl: boolean;
-  imap_folder: string;
-  imap_poll_seconds: number;
   has_smtp_password: boolean;
-  has_imap_password: boolean;
   updated_at: string;
 }
 

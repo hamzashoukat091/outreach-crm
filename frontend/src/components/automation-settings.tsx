@@ -45,7 +45,7 @@ const ALL_SITUATIONS: ReplySituation[] = [
 /** Card shell shared by every section: title, body, save/reset footer.
  *
  *  Collapsible, because the page is ~50 inputs across four screens and most
- *  of them (SMTP, IMAP) are set once and never touched again. `defaultOpen`
+ *  of them (SMTP) are set once and never touched again. `defaultOpen`
  *  decides what greets you: the things you actually tune. */
 function Section({
   title,
@@ -561,7 +561,7 @@ function RepliesSection({ settings }: { settings: AutomationSettings }) {
   );
 }
 
-// ---------- SMTP / IMAP ----------
+// ---------- SMTP ----------
 
 function PasswordField({
   id,
@@ -733,133 +733,6 @@ function SmtpSection({ settings }: { settings: AutomationSettings }) {
   );
 }
 
-function ImapSection({ settings }: { settings: AutomationSettings }) {
-  const { pending, toast, save } = useSettingsSave();
-  const [form, setForm] = useState({
-    imap_host: settings.imap_host ?? "",
-    imap_port: settings.imap_port !== null ? String(settings.imap_port) : "",
-    imap_username: settings.imap_username ?? "",
-    imap_use_ssl: settings.imap_use_ssl,
-    imap_folder: settings.imap_folder ?? "",
-    imap_poll_seconds: settings.imap_poll_seconds,
-  });
-  const [password, setPassword] = useState("");
-  const [passwordTouched, setPasswordTouched] = useState(false);
-
-  function submit() {
-    save({
-      imap_host: form.imap_host.trim() || null,
-      imap_port: form.imap_port === "" ? null : Number(form.imap_port),
-      imap_username: form.imap_username.trim() || null,
-      imap_use_ssl: form.imap_use_ssl,
-      // Absent keeps the stored folder; the column itself is non-null.
-      ...(form.imap_folder.trim() ? { imap_folder: form.imap_folder.trim() } : {}),
-      imap_poll_seconds: form.imap_poll_seconds,
-      ...(passwordTouched ? { imap_password: password } : {}),
-    });
-  }
-
-  return (
-    <>
-      <Section
-        title="Inbound email (IMAP)"
-        description="Where replies are read from."
-        defaultOpen={false}
-        summary={
-          form.imap_host ? `${form.imap_host}:${form.imap_port}` : "Not configured"
-        }
-        pending={pending}
-        onSave={submit}
-      >
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="sm:col-span-2">
-            <label className="label text-xs" htmlFor="imap-host">Host</label>
-            <input
-              id="imap-host"
-              value={form.imap_host}
-              onChange={(e) => setForm((f) => ({ ...f, imap_host: e.target.value }))}
-              placeholder="imap.example.com"
-              className="input"
-            />
-          </div>
-          <div>
-            <label className="label text-xs" htmlFor="imap-port">Port</label>
-            <input
-              id="imap-port"
-              type="number"
-              value={form.imap_port}
-              onChange={(e) => setForm((f) => ({ ...f, imap_port: e.target.value }))}
-              placeholder="993"
-              className="input"
-            />
-          </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="label text-xs" htmlFor="imap-user">Username</label>
-            <input
-              id="imap-user"
-              value={form.imap_username}
-              onChange={(e) => setForm((f) => ({ ...f, imap_username: e.target.value }))}
-              className="input"
-            />
-          </div>
-          <PasswordField
-            id="imap-pass"
-            hasSaved={settings.has_imap_password}
-            value={password}
-            touched={passwordTouched}
-            onChange={(v) => {
-              setPassword(v);
-              setPasswordTouched(true);
-            }}
-          />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <label className="label text-xs" htmlFor="imap-folder">Folder</label>
-            <input
-              id="imap-folder"
-              value={form.imap_folder}
-              onChange={(e) => setForm((f) => ({ ...f, imap_folder: e.target.value }))}
-              placeholder="INBOX"
-              className="input"
-            />
-          </div>
-          <div>
-            <label className="label text-xs" htmlFor="imap-poll">Poll every (seconds)</label>
-            <input
-              id="imap-poll"
-              type="number"
-              min={10}
-              value={form.imap_poll_seconds}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, imap_poll_seconds: Number(e.target.value) }))
-              }
-              className="input"
-            />
-          </div>
-          <div className="flex items-end pb-2.5">
-            <label className="flex items-center gap-2 text-sm text-ink">
-              <input
-                type="checkbox"
-                checked={form.imap_use_ssl}
-                onChange={(e) => setForm((f) => ({ ...f, imap_use_ssl: e.target.checked }))}
-                className="h-4 w-4 rounded border-line accent-[rgb(var(--accent))]"
-              />
-              Use SSL
-            </label>
-          </div>
-        </div>
-        <p className="text-xs text-muted">
-          Leave host empty to keep using Mailpit (local test inbox).
-        </p>
-      </Section>
-      <Toast state={toast} />
-    </>
-  );
-}
-
 // ---------- Sender facts ----------
 
 const FACT_FIELDS: {
@@ -993,15 +866,6 @@ export function AutomationSettingsPanel({
     settings.from_name,
     settings.reply_to,
   ]);
-  const imapKey = JSON.stringify([
-    settings.imap_host,
-    settings.imap_port,
-    settings.imap_username,
-    settings.has_imap_password,
-    settings.imap_use_ssl,
-    settings.imap_folder,
-    settings.imap_poll_seconds,
-  ]);
 
   return (
     <div className="space-y-6">
@@ -1010,7 +874,6 @@ export function AutomationSettingsPanel({
       <LimitsSection key={`l-${limitsKey}`} settings={settings} />
       <RepliesSection key={`r-${repliesKey}`} settings={settings} />
       <SmtpSection key={`m-${smtpKey}`} settings={settings} />
-      <ImapSection key={`i-${imapKey}`} settings={settings} />
       <SenderFactsSection key={`f-${JSON.stringify(facts)}`} facts={facts} />
     </div>
   );

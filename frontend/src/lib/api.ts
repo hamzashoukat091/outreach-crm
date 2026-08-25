@@ -468,7 +468,7 @@ export const api = {
     request<AutomationSettings>("/api/automation/settings"),
 
   updateAutomationSettings: (
-    payload: Partial<AutomationSettings & { smtp_password: string; imap_password: string }>,
+    payload: Partial<AutomationSettings & { smtp_password: string }>,
   ) =>
     request<AutomationSettings>("/api/automation/settings", {
       method: "PUT",

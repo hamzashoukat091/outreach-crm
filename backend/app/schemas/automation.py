@@ -275,15 +275,8 @@ class AutomationSettingsOut(ORMModel):
     from_address: str | None = None
     from_name: str | None = None
     reply_to: str | None = None
-    imap_host: str | None = None
-    imap_port: int | None = None
-    imap_username: str | None = None
-    imap_use_ssl: bool = True
-    imap_folder: str = "INBOX"
-    imap_poll_seconds: int = 60
     # Passwords never leave the API; only whether one is stored.
     has_smtp_password: bool = False
-    has_imap_password: bool = False
     updated_at: datetime
 
 
@@ -313,13 +306,6 @@ class AutomationSettingsUpdate(BaseModel):
     from_address: str | None = None
     from_name: str | None = None
     reply_to: str | None = None
-    imap_host: str | None = None
-    imap_port: int | None = None
-    imap_username: str | None = None
-    imap_password: str | None = None
-    imap_use_ssl: bool | None = None
-    imap_folder: str | None = None
-    imap_poll_seconds: int | None = Field(default=None, ge=10, le=3600)
 
 
 class SettingsResetRequest(BaseModel):

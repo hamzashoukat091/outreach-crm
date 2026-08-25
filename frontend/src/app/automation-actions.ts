@@ -373,7 +373,7 @@ export async function simulateReplyAction(
 // ---------- Settings ----------
 
 export async function saveAutomationSettingsAction(
-  payload: Partial<AutomationSettings & { smtp_password: string; imap_password: string }>,
+  payload: Partial<AutomationSettings & { smtp_password: string }>,
 ): Promise<ActionState> {
   try {
     await api.updateAutomationSettings(payload);

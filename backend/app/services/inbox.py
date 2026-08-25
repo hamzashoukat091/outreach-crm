@@ -1,22 +1,20 @@
-"""Inbound mail: fetching it and attaching it to the right conversation.
+"""Inbound mail: attaching it to the right conversation.
 
-Two sources behind one interface. ImapSource is the real thing, pointed at the
-user's mailbox via the AutomationSettings imap_* fields. MailpitSource exists
-because Mailpit -- the dev catcher -- speaks no IMAP at all, only a REST API;
-it is selected automatically whenever no IMAP host is configured, so the whole
-reply pipeline is exercisable locally without a real mailbox.
+Real inbound now arrives through services.gmail_sync, which writes Message
+rows directly. What remains here is ingest() -- the matching, dedupe and
+bounce handling that any inbound path needs -- plus MailpitSource, the dev
+catcher, so the reply pipeline stays exercisable locally without a mailbox.
 
-Both yield the same InboundEmail dataclass, and ingest() neither knows nor
-cares which one produced it.
+IMAP was the original production path and is gone: it authenticated with the
+account password stored in the database, found new mail by the UNSEEN flag
+(which anything touching the mailbox can flip), and reconstructed threads by
+parsing References headers. The Gmail API gives an exact history cursor and
+an authoritative threadId, and needs no password.
 """
 
-import email
-import email.policy
-import imaplib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from email.utils import parseaddr, parsedate_to_datetime
 from typing import Protocol
 
 import httpx
@@ -34,6 +32,7 @@ from app.models import (
     Prospect,
     SequenceEnrollment,
 )
+from app.services.gmail import GmailClient
 from app.services.sequencer import on_bounce
 
 logger = logging.getLogger("outreach.inbox")
@@ -56,7 +55,7 @@ class InboxSource(Protocol):
 
 
 def get_inbox_source(settings_row: AutomationSettings) -> "InboxSource":
-    """IMAP when the user configured a mailbox, Mailpit in dev, nothing in prod.
+    """Nothing when Gmail sync owns the mailbox, else Mailpit in dev.
 
     The third case matters: production runs without Mailpit (it is excluded by
     a compose profile), so falling back to it there meant the worker tried to
@@ -67,8 +66,11 @@ def get_inbox_source(settings_row: AutomationSettings) -> "InboxSource":
     An unconfigured inbox is a normal state, not a failure: no IMAP host and
     no Mailpit simply means nothing to poll.
     """
-    if (settings_row.imap_host or "").strip():
-        return ImapSource(settings_row)
+    # Gmail owns inbound when configured. A second live path would race to
+    # ingest the same reply, and the two use different dedupe keys
+    # (gmail:<id> vs the RFC Message-Id), so the constraint would not catch it.
+    if GmailClient().configured:
+        return NullSource()
     if not (env_settings.mailpit_api_url or "").strip():
         return NullSource()
     return MailpitSource()
@@ -161,83 +163,6 @@ class MailpitSource:
             to_address=(recipient or "").lower(),
             subject=detail.get("Subject") or "",
             text_body=detail.get("Text") or "",
-            date=date,
-        )
-
-
-# ---------- IMAP (production) ----------
-
-
-class ImapSource:
-    """Real mailbox polling over IMAP, for when the user connects their own
-    account. Unseen mail is fetched and thereby marked seen, which is what
-    keeps it from being re-ingested."""
-
-    def __init__(self, settings_row: AutomationSettings) -> None:
-        self.host = settings_row.imap_host or ""
-        self.port = settings_row.imap_port or (993 if settings_row.imap_use_ssl else 143)
-        self.username = settings_row.imap_username or ""
-        self.password = settings_row.imap_password or ""
-        self.use_ssl = settings_row.imap_use_ssl
-        self.folder = settings_row.imap_folder or "INBOX"
-
-    def fetch_new(self) -> list[InboundEmail]:
-        results: list[InboundEmail] = []
-
-        if self.use_ssl:
-            conn = imaplib.IMAP4_SSL(self.host, self.port)
-        else:
-            conn = imaplib.IMAP4(self.host, self.port)
-        try:
-            conn.login(self.username, self.password)
-            conn.select(self.folder)
-            status, data = conn.search(None, "UNSEEN")
-            if status != "OK":
-                return results
-
-            for num in data[0].split():
-                # Fetching BODY[] sets \Seen, which is the "already ingested" marker.
-                status, parts = conn.fetch(num, "(RFC822)")
-                if status != "OK" or not parts or not isinstance(parts[0], tuple):
-                    continue
-                try:
-                    results.append(self._parse(parts[0][1]))
-                except Exception:  # noqa: BLE001
-                    logger.exception("failed to parse IMAP message %s", num)
-        finally:
-            try:
-                conn.logout()
-            except Exception:  # noqa: BLE001
-                pass
-
-        return results
-
-    @staticmethod
-    def _parse(raw: bytes) -> InboundEmail:
-        msg = email.message_from_bytes(raw, policy=email.policy.default)
-
-        body = ""
-        text_part = msg.get_body(preferencelist=("plain",))
-        if text_part is not None:
-            body = text_part.get_content()
-        elif (html := msg.get_body(preferencelist=("html",))) is not None:
-            body = html.get_content()  # better than nothing; classifier copes
-
-        date = datetime.now(timezone.utc)
-        if msg.get("Date"):
-            try:
-                date = parsedate_to_datetime(msg["Date"])
-            except (TypeError, ValueError):
-                pass
-
-        return InboundEmail(
-            message_id=(msg.get("Message-Id") or "").strip(),
-            in_reply_to=(msg.get("In-Reply-To") or "").strip() or None,
-            references=(msg.get("References") or "").strip() or None,
-            from_address=parseaddr(msg.get("From") or "")[1].lower(),
-            to_address=parseaddr(msg.get("To") or "")[1].lower(),
-            subject=msg.get("Subject") or "",
-            text_body=body,
             date=date,
         )
 

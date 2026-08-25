@@ -22,8 +22,8 @@ export default async function InboxPage() {
   return (
     <>
       <PageHeader
-        title="Inbox"
-        description="Automated conversations. Replies land here with their classification."
+        title="Conversations"
+        description="Prospects who replied. Each thread carries its classification and any drafted reply awaiting approval."
         action={
           pendingCount > 0 ? (
             <Link href="/approvals" className="btn-secondary">
@@ -38,7 +38,7 @@ export default async function InboxPage() {
           <EmptyState
             icon={<Logo className="h-5 w-5" />}
             title="No conversations yet"
-            description="When a prospect in an automated sequence replies, the thread shows up here."
+            description="When a prospect in an automated sequence replies, the thread shows up here. All other mail lives in Mailbox."
           />
         </div>
       ) : (

@@ -40,13 +40,12 @@ from app.services.replier import get_or_create_facts
 
 router = APIRouter(prefix="/api/automation", tags=["automation"])
 
-PASSWORD_FIELDS = ("smtp_password", "imap_password")
+PASSWORD_FIELDS = ("smtp_password",)
 
 
 def _settings_out(row: AutomationSettings) -> AutomationSettingsOut:
     out = AutomationSettingsOut.model_validate(row)
     out.has_smtp_password = bool(row.smtp_password)
-    out.has_imap_password = bool(row.imap_password)
     return out
 
 

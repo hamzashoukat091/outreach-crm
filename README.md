@@ -117,8 +117,8 @@ The loop, end to end:
    the next opportunity, or a specific date and time.
 2. The worker drafts, waits for the send window, and sends — threading each
    message under the opener with real `In-Reply-To`/`References` headers.
-3. Replies are read back in (Mailpit's API locally; IMAP when you configure your
-   mailbox), matched to their thread, and **classified**: interested, question,
+3. Replies are read back in (the Gmail API in production, Mailpit's API
+   locally), matched to their thread, and **classified**: interested, question,
    objection, not now, referral, not interested, unsubscribe, auto-reply, unclear.
 4. A reply cancels the remaining steps. Unsubscribes go to a **suppression list**
    keyed on the email address, which survives re-imports and re-enrollment.
@@ -138,7 +138,7 @@ sending independently. Sends respect a configurable window (default Mon–Fri
 against the suppression list immediately before the socket opens.
 
 **Settings** is the control panel for all of it — schedule, limits, reply
-behaviour, SMTP/IMAP transport — each section with its own save and
+behaviour, SMTP transport — each section with its own save and
 reset-to-defaults. Leave the transport empty and mail stays in Mailpit.
 
 ## Architecture

@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     mail_from: str = "outreach@example.com"
     mail_from_name: str = "Outreach"
 
-    # Mailpit's REST API, used by the dev inbox poller (Mailpit speaks no
-    # IMAP). Only consulted when AutomationSettings.imap_host is empty.
+    # Mailpit's REST API, used by the dev inbox poller. Only consulted when
+    # Gmail sync is not configured.
     mailpit_api_url: str = "http://mailpit:8025"
 
     # Worker cadence and guardrails.

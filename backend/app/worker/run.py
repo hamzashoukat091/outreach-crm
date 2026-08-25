@@ -188,6 +188,9 @@ def send_due_messages() -> None:
             time.sleep(random.uniform(1.0, 5.0))
 
 
+# Only Mailpit is polled here now; real inbound arrives via Gmail sync.
+MAILPIT_POLL_SECONDS = 30
+
 _last_poll: datetime | None = None
 
 
@@ -198,7 +201,7 @@ def poll_inbox() -> None:
 
     with SessionLocal() as db:
         settings_row = get_settings_row(db)
-        interval = max(10, settings_row.imap_poll_seconds)
+        interval = MAILPIT_POLL_SECONDS
         if _last_poll and (now - _last_poll).total_seconds() < interval:
             return
         _last_poll = now
