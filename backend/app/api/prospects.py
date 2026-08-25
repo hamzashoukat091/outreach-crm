@@ -98,7 +98,15 @@ def _attach_enrollments(db: Session, items: list[ProspectOut]) -> None:
             SequenceEnrollment.state,
             SequenceEnrollment.current_position,
             Sequence.name,
-            func.count(SequenceStep.id).label("total_steps"),
+            # Correlated subquery, not a join: sequence_steps and messages are
+            # both one-to-many off the enrollment, so joining them together
+            # multiplies rows and count() returns steps x messages. That read
+            # "Step 1 of 6" on a three-step sequence with two messages sent,
+            # and grew as the run progressed.
+            select(func.count(SequenceStep.id))
+            .where(SequenceStep.sequence_id == Sequence.id)
+            .scalar_subquery()
+            .label("total_steps"),
             func.min(
                 case(
                     (
@@ -111,7 +119,6 @@ def _attach_enrollments(db: Session, items: list[ProspectOut]) -> None:
             ).label("next_at"),
         )
         .join(Sequence, Sequence.id == SequenceEnrollment.sequence_id)
-        .outerjoin(SequenceStep, SequenceStep.sequence_id == Sequence.id)
         .outerjoin(Message, Message.enrollment_id == SequenceEnrollment.id)
         .where(SequenceEnrollment.prospect_id.in_(ids))
         .group_by(
