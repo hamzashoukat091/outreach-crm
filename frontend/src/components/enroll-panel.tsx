@@ -79,14 +79,36 @@ export function EnrollPanel({
     return open ? prospect.sequence_name ?? "a sequence" : null;
   }
 
-  // Handed off to automation but sitting in no sequence. They are the ones
-  // most likely to be enrolled next, so they sort to the top.
+  // A finished run, as opposed to no run at all. Re-enrolling is allowed --
+  // someone who replied in March may be worth a fresh campaign in September --
+  // but it restarts a sequence whose step 2 opens "they did not reply to the
+  // first email", so it has to be a decision rather than a stray checkbox.
+  const FINISHED_LABEL: Record<string, string> = {
+    replied: "Replied — already in conversation",
+    completed: "Completed this sequence",
+    stopped: "Sequence was stopped",
+    bounced: "Bounced — address may be dead",
+  };
+  function finishedState(prospect: Prospect): string | null {
+    if (runningIn(prospect)) return null;
+    const state = prospect.enrollment_state ?? "";
+    return FINISHED_LABEL[state] ?? null;
+  }
+
+  // Handed off to automation and never run through anything. Someone who
+  // already replied is not "waiting" -- counting them here put a live
+  // conversation at the top of a list headed "ready to enroll".
   const waiting = prospects.filter(
-    (p) => p.pipeline_mode === "automated" && !runningIn(p),
+    (p) =>
+      p.pipeline_mode === "automated" && !runningIn(p) && !finishedState(p),
   );
   const ordered = [
     ...waiting,
-    ...prospects.filter((p) => !waiting.includes(p) && !runningIn(p)),
+    ...prospects.filter(
+      (p) => !waiting.includes(p) && !runningIn(p) && !finishedState(p),
+    ),
+    // Finished a run: still selectable, but below the fresh ones.
+    ...prospects.filter((p) => !runningIn(p) && finishedState(p)),
     // Already running, so they sink to the bottom rather than disappear --
     // seeing "already in Standard 3-step" is the answer to "where did they go".
     ...prospects.filter(runningIn),
@@ -247,12 +269,15 @@ export function EnrollPanel({
           ) : (
             ordered.map((prospect) => {
               const running = runningIn(prospect);
+              const finished = finishedState(prospect);
               return (
               <label
                 key={prospect.id}
                 title={
                   running
                     ? `Already enrolled in ${running}. Stop that run first to re-enroll.`
+                    : finished
+                    ? `${finished}. Enrolling again restarts the sequence from step 1.`
                     : undefined
                 }
                 className={`flex items-center gap-3 px-3 py-2 ${
@@ -278,6 +303,11 @@ export function EnrollPanel({
                   <span className="block truncate text-xs text-muted">
                     {running ? (
                       <>Already in {running}</>
+                    ) : finished ? (
+                      // Selectable, but never silently: restarting a sequence
+                      // on someone mid-conversation sends them a follow-up
+                      // that opens "they did not reply to the first email".
+                      <span className="text-amber-600">{finished}</span>
                     ) : (
                       <>
                         {prospect.email}
