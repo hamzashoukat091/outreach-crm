@@ -35,6 +35,10 @@ services:
       # own Settings page; console keeps a fresh deploy from mailing
       # anyone before you have configured that.
       MAIL_DRIVER: ${MAIL_DRIVER:-console}
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 768m
+    pids_limit: 256
 
   worker:
     restart: unless-stopped
@@ -44,6 +48,10 @@ services:
       # falls back to the mailpit hostname, fails DNS, and logs a stack trace
       # every poll for a mailbox nobody configured.
       MAILPIT_API_URL: ""
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    pids_limit: 256
 
   web:
     restart: unless-stopped
@@ -57,6 +65,27 @@ services:
         NEXT_PUBLIC_API_URL: ""
     ports: !override
       - "127.0.0.1:3100:3000"
+    # Hardening, added after CVE-2025-66478 (React2Shell) was exploited on
+    # this host: an attacker reached next-server, wrote a miner to /tmp, ran
+    # it, deleted the file, and burned both cores for eleven days. Patching
+    # Next closes that specific hole; these limit what the next one can do.
+    #
+    # read_only makes the image filesystem immutable, so a payload has
+    # nowhere to land. Next needs two writable paths, granted as tmpfs with
+    # noexec+nosuid -- so even a file written there cannot be executed.
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,nodev,size=64m
+      - /app/.next/cache:noexec,nosuid,nodev,size=256m
+    # No process in this container ever needs to gain privileges.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # A hard ceiling, so nothing in here can starve the host again. The miner
+    # took 2.4GB of 3.8GB and left the machine unable to serve requests.
+    mem_limit: 768m
+    pids_limit: 256
 
   # Mailpit is a development mail catcher -- it accepts mail and shows it in
   # a web UI instead of delivering it. It has no place in production, and its
