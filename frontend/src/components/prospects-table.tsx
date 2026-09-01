@@ -282,9 +282,9 @@ export function ProspectsTable({
             </thead>
             <tbody className="divide-y divide-line-soft">
               {prospects.map((prospect) => {
-                // A sequence is mid-flight for this person. Marked with a left
-                // edge rather than a tint: selection already owns the row
-                // background, and the two states have to be able to coexist.
+                // A sequence is mid-flight for this person. Shown in the
+                // Pipeline column only -- there was also a left edge on the
+                // checkbox cell, which just repeated it and read as selection.
                 const running =
                   prospect.enrollment_state === "active" ||
                   prospect.enrollment_state === "paused";
@@ -296,13 +296,11 @@ export function ProspectsTable({
                     selected.has(prospect.id) ? "bg-accent-soft/50" : ""
                   }`}
                 >
-                  <td
-                    className={`px-4 py-3 ${
-                      running
-                        ? "border-l-2 border-accent bg-accent-soft/20"
-                        : "border-l-2 border-transparent"
-                    }`}
-                  >
+                  {/* No enrolled-state accent here: the Pipeline column already
+                      says "active", which sequence, and which step. On the
+                      checkbox cell a coloured bar reads as selection anyway,
+                      which is a different thing entirely. */}
+                  <td className="px-4 py-3">
                     <input
                       type="checkbox"
                       checked={selected.has(prospect.id)}
