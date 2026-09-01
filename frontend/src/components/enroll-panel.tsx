@@ -409,11 +409,23 @@ export function EnrollPanel({
         >
           <SendIcon />
           {pending
-            ? "Enrolling…"
+            ? `Writing ${selectable.length} email${selectable.length === 1 ? "" : "s"}…`
             : selectable.length
               ? `Enroll ${selectable.length} prospect${selectable.length === 1 ? "" : "s"}`
               : "Enroll prospects"}
         </button>
+
+        {/* A silent three-minute button is indistinguishable from a hung one.
+            "draft now" writes every email with Claude before returning, so
+            say that, and say roughly how long it will take. */}
+        {pending && mode !== "send_at" && (
+          <p className="mt-2 text-center text-xs text-muted">
+            Claude is drafting each one — about{" "}
+            {Math.max(1, Math.round((selectable.length * 5.5) / 60))} minute
+            {Math.round((selectable.length * 5.5) / 60) === 1 ? "" : "s"} for{" "}
+            {selectable.length}. Leave this tab open.
+          </p>
+        )}
       </div>
 
       <Toast state={toast} />
