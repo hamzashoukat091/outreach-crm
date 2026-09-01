@@ -35,6 +35,11 @@ export function EnrollPanel({
   const [mode, setMode] = useState<EnrollMode>("draft_now_send_later");
   const [sendAt, setSendAt] = useState("");
   const [pending, startTransition] = useTransition();
+  // Bumped after a successful enroll so the list below re-fetches. router
+  // .refresh() re-runs the server components, but this list is client-side
+  // state fetched in an effect -- without this it still showed everyone as
+  // enrollable seconds after enrolling them.
+  const [reloadKey, setReloadKey] = useState(0);
   const { toast, show } = useToast();
   const router = useRouter();
   const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -59,7 +64,7 @@ export function EnrollPanel({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, reloadKey]);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -208,6 +213,7 @@ export function EnrollPanel({
       show(result);
       if (result.ok) {
         setSelected(new Set());
+        setReloadKey((k) => k + 1);
         router.refresh();
       }
     });
