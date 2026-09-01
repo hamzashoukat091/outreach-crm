@@ -50,14 +50,32 @@ export async function importProspectsAction(
   const category = String(formData.get("category") ?? "").trim();
   const qs = category ? `?category=${encodeURIComponent(category)}` : "";
 
+  // This runs on the server, where the browser's cookie does not travel with
+  // fetch. Without forwarding it by hand the request reaches the auth gate
+  // anonymous and every import fails with "Not signed in" -- whether or not
+  // the user is actually signed in. Every other call goes through lib/api,
+  // which already does this; this one predates it and used a raw fetch.
+  const { cookies } = await import("next/headers");
+  const session = (await cookies()).get("outreach_session");
+
   try {
     const res = await fetch(
       `${process.env.API_URL ?? "http://api:8000"}/api/prospects/import${qs}`,
-      { method: "POST", body: upload, cache: "no-store" },
+      {
+        method: "POST",
+        body: upload,
+        cache: "no-store",
+        headers: session
+          ? { cookie: `outreach_session=${session.value}` }
+          : undefined,
+      },
     );
     const data = await res.json();
 
     if (!res.ok) {
+      if (res.status === 401) {
+        return { ok: false, message: "Your session expired. Sign in again, then retry the import." };
+      }
       return { ok: false, message: data.detail ?? "Import failed." };
     }
 
