@@ -307,6 +307,32 @@ def call_claude(system: str, user_message: str, max_tokens: int = 1200) -> dict[
     }
 
 
+def _capitalize_subject(subject: str) -> str:
+    """Capitalise the first letter, leaving the rest alone.
+
+    Several strategy prompts ask for a lowercase subject -- the convention is
+    that it reads as a personal note rather than a mass send. In a real inbox
+    it reads as a typo instead, sitting under "Security alert" and every other
+    properly-formed sender.
+
+    Done here rather than by editing those prompts because a model instruction
+    is a request: it happened to be obeyed on every send so far, but the next
+    one is a coin toss. This is deterministic.
+
+    Only the first cased character changes, so "iPhone workflows" keeps its
+    shape and an already-capitalised subject is untouched.
+    """
+    if not subject:
+        return subject
+    for index, char in enumerate(subject):
+        if char.isalpha():
+            return subject[:index] + char.upper() + subject[index + 1 :]
+        if not char.isspace() and char not in "\"'([{":
+            # Opens with something uncased -- a number or symbol. Leave it.
+            return subject
+    return subject
+
+
 def _parse_response(text: str) -> tuple[str, str]:
     """Split the SUBJECT/BODY response, tolerating small format drift."""
     subject = ""
@@ -329,7 +355,7 @@ def _parse_response(text: str) -> tuple[str, str]:
         first = body.split("\n")[0].strip()
         subject = (first[:120] or "Quick question").strip()
 
-    return subject[:500], body
+    return _capitalize_subject(subject)[:500], body
 
 
 def generate_email(

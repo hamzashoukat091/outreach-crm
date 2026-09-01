@@ -31,6 +31,7 @@ from app.services.classifier import classify_reply
 from app.services.generator import (
     GUARDRAILS,
     GenerationError,
+    _capitalize_subject,
     _parse_response,
     build_context,
     build_sender_block,
@@ -123,7 +124,10 @@ def _reply_subject(inbound: Message) -> str:
         base = (inbound.subject or "your email").strip()
         while base.lower().startswith("re:"):
             base = base[3:].strip()
-    return f"Re: {base}"[:500]
+    # Capitalise here too: this branch runs when the thread subject is
+    # unknown and we are echoing back whatever the prospect's client sent,
+    # which may itself be lowercase.
+    return f"Re: {_capitalize_subject(base)}"[:500]
 
 
 def handle_inbound(
