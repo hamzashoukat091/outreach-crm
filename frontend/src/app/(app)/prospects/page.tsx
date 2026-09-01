@@ -130,8 +130,12 @@ export default async function ProspectsPage({
 
       {totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between text-sm">
-          <span className="text-muted">
-            Page {page} of {totalPages}
+          {/* Which rows these are, not just which page. The heading says
+              "30 prospects" while 25 are on screen, and "Page 1 of 2" does
+              not close that gap. */}
+          <span className="text-muted tabular-nums">
+            Showing {(page - 1) * PAGE_SIZE + 1}–
+            {Math.min(page * PAGE_SIZE, data.total)} of {data.total}
           </span>
           <div className="flex gap-2">
             {page > 1 && (

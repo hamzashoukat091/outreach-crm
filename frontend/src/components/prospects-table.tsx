@@ -168,6 +168,7 @@ export function ProspectsTable({
           animate-fade-up">
           <span className="tabular text-sm font-medium text-ink">
             {selected.size} selected
+            {allSelected && prospects.length > 0 ? " on this page" : ""}
           </span>
 
           <select
@@ -269,7 +270,10 @@ export function ProspectsTable({
                     onChange={() =>
                       setSelected(allSelected ? new Set() : new Set(prospects.map((p) => p.id)))
                     }
-                    aria-label="Select all prospects"
+                    // Only this page: the table receives one page of rows, so
+                    // "all prospects" would be a promise it cannot keep.
+                    aria-label="Select all prospects on this page"
+                    title="Select all on this page"
                     className="h-4 w-4 cursor-pointer rounded border-line accent-[rgb(var(--accent))]"
                   />
                 </th>
