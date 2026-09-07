@@ -364,7 +364,9 @@ def enroll_prospects(
             )
             continue
         try:
-            enrollment = enroll(db, prospect, sequence, payload.mode, payload.send_at)
+            enrollment = enroll(
+                db, prospect, sequence, payload.mode, payload.send_at, force=payload.force
+            )
         except SequencerError as exc:
             result.skipped += 1
             result.results.append(

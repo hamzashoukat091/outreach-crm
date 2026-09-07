@@ -244,6 +244,7 @@ export async function enrollProspectsAction(
   prospectIds: string[],
   mode: EnrollMode,
   sendAt?: string,
+  force = false,
 ): Promise<ActionState> {
   if (!prospectIds.length) return { ok: false, message: "Select at least one prospect." };
   if (mode === "send_at" && !sendAt) {
@@ -255,6 +256,7 @@ export async function enrollProspectsAction(
       prospect_ids: prospectIds,
       mode,
       send_at: mode === "send_at" ? sendAt : undefined,
+      force,
     });
 
     refreshAutomation(sequenceId);

@@ -84,10 +84,14 @@ export function EnrollPanel({
     return open ? prospect.sequence_name ?? "a sequence" : null;
   }
 
-  // A finished run, as opposed to no run at all. Re-enrolling is allowed --
-  // someone who replied in March may be worth a fresh campaign in September --
-  // but it restarts a sequence whose step 2 opens "they did not reply to the
-  // first email", so it has to be a decision rather than a stray checkbox.
+  // Someone who has already been through a sequence. Locked by default: step
+  // 2 of a restarted run opens "they did not reply to the first email", which
+  // sent to someone who replied -- or who said no -- reads as nobody paying
+  // attention, and a second cold email is what gets reported as spam.
+  //
+  // Not permanent. "Allow re-enrolling" below unlocks the current list, so
+  // running a genuinely new campaign months later stays possible; it just
+  // cannot happen by dragging down a column of checkboxes.
   const FINISHED_LABEL: Record<string, string> = {
     replied: "Replied — already in conversation",
     completed: "Completed this sequence",
@@ -99,6 +103,13 @@ export function EnrollPanel({
     const state = prospect.enrollment_state ?? "";
     return FINISHED_LABEL[state] ?? null;
   }
+  const [allowReenroll, setAllowReenroll] = useState(false);
+  // Locked = finished a run, and the override is off.
+  function lockedReason(prospect: Prospect): string | null {
+    if (allowReenroll) return null;
+    return finishedState(prospect);
+  }
+  const finishedCount = prospects.filter((p) => finishedState(p)).length;
 
   // Handed off to automation and never run through anything. Someone who
   // already replied is not "waiting" -- counting them here put a live
@@ -121,7 +132,9 @@ export function EnrollPanel({
 
   // Selections can outlive the search that produced them. Never submit an id
   // that has since started running somewhere.
-  const blocked = new Set(prospects.filter(runningIn).map((p) => p.id));
+  const blocked = new Set(
+    prospects.filter((p) => runningIn(p) || lockedReason(p)).map((p) => p.id),
+  );
   const selectable = [...selected].filter((id) => !blocked.has(id));
 
   // When the first email actually leaves, under each option. Computed rather
@@ -209,6 +222,7 @@ export function EnrollPanel({
         selectable,
         mode,
         mode === "send_at" && sendAt ? new Date(sendAt).toISOString() : undefined,
+        allowReenroll,
       );
       show(result);
       if (result.ok) {
@@ -267,6 +281,31 @@ export function EnrollPanel({
           </button>
         )}
 
+        {/* The escape hatch. Locked rows stay locked until this is ticked, so
+            a fresh campaign to an old list is possible but never accidental. */}
+        {finishedCount > 0 && (
+          <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-lg border border-line px-3 py-2 text-xs text-muted hover:bg-surface-2">
+            <input
+              type="checkbox"
+              checked={allowReenroll}
+              onChange={(e) => {
+                setAllowReenroll(e.target.checked);
+                if (!e.target.checked) setSelected(new Set());
+              }}
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-line accent-[rgb(var(--accent))]"
+            />
+            <span>
+              Allow re-enrolling {finishedCount} prospect
+              {finishedCount === 1 ? "" : "s"} who already finished a run.
+              {allowReenroll && (
+                <strong className="block text-amber-600">
+                  They will receive this sequence from step 1 again.
+                </strong>
+              )}
+            </span>
+          </label>
+        )}
+
         <div className="mt-3 max-h-64 divide-y divide-line overflow-y-auto rounded-lg border border-line">
           {loading && prospects.length === 0 ? (
             <p className="px-3 py-4 text-sm text-muted">Loading…</p>
@@ -276,26 +315,30 @@ export function EnrollPanel({
             ordered.map((prospect) => {
               const running = runningIn(prospect);
               const finished = finishedState(prospect);
+              const locked = lockedReason(prospect);
+              const disabled = !!running || !!locked;
               return (
               <label
                 key={prospect.id}
                 title={
                   running
                     ? `Already enrolled in ${running}. Stop that run first to re-enroll.`
+                    : locked
+                    ? `${locked}. Tick "Allow re-enrolling" to include them.`
                     : finished
                     ? `${finished}. Enrolling again restarts the sequence from step 1.`
                     : undefined
                 }
                 className={`flex items-center gap-3 px-3 py-2 ${
-                  running
+                  disabled
                     ? "cursor-not-allowed opacity-55"
                     : "cursor-pointer hover:bg-surface-2"
                 }`}
               >
                 <input
                   type="checkbox"
-                  checked={!running && selected.has(prospect.id)}
-                  disabled={!!running}
+                  checked={!disabled && selected.has(prospect.id)}
+                  disabled={disabled}
                   onChange={() => toggle(prospect.id)}
                   className="h-4 w-4 shrink-0 rounded border-line accent-[rgb(var(--accent))] disabled:cursor-not-allowed"
                 />
@@ -310,10 +353,10 @@ export function EnrollPanel({
                     {running ? (
                       <>Already in {running}</>
                     ) : finished ? (
-                      // Selectable, but never silently: restarting a sequence
-                      // on someone mid-conversation sends them a follow-up
-                      // that opens "they did not reply to the first email".
-                      <span className="text-amber-600">{finished}</span>
+                      <span className={locked ? "text-muted" : "text-amber-600"}>
+                        {finished}
+                        {locked ? " · locked" : " · will restart from step 1"}
+                      </span>
                     ) : (
                       <>
                         {prospect.email}

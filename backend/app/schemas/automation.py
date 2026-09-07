@@ -118,6 +118,10 @@ class EnrollRequest(BaseModel):
     prospect_ids: list[uuid.UUID] = Field(min_length=1)
     mode: Literal["send_now", "draft_now_send_later", "send_at"] = "draft_now_send_later"
     send_at: datetime | None = None
+    # Deliberately re-enroll people who already replied or were stopped. Off
+    # by default so a stale list cannot restart a sequence on someone who
+    # said no.
+    force: bool = False
 
 
 class EnrollResultItem(BaseModel):

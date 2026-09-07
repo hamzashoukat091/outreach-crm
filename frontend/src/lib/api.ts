@@ -380,7 +380,7 @@ export const api = {
 
   enrollProspects: (
     sequenceId: string,
-    payload: { prospect_ids: string[]; mode: EnrollMode; send_at?: string },
+    payload: { prospect_ids: string[]; mode: EnrollMode; send_at?: string; force?: boolean },
   ) =>
     request<EnrollResponse>(`/api/automation/sequences/${sequenceId}/enroll`, {
       method: "POST",

@@ -88,6 +88,7 @@ def enroll(
     sequence: Sequence,
     mode: str,
     send_at: datetime | None = None,
+    force: bool = False,
 ) -> SequenceEnrollment:
     """Put a prospect into a sequence and queue its first message.
 
@@ -97,6 +98,31 @@ def enroll(
     """
     if is_suppressed(db, prospect.email):
         raise SequencerError("Address is suppressed (unsubscribed or bounced)")
+
+    # Someone who already told us no does not get the sequence again by
+    # accident. The UI locks these rows, but the UI is not the guarantee --
+    # a bulk call with a stale list would otherwise walk straight past it.
+    # `force` is how a deliberate new campaign gets through.
+    if not force:
+        declined = db.scalar(
+            select(SequenceEnrollment)
+            .where(
+                SequenceEnrollment.prospect_id == prospect.id,
+                SequenceEnrollment.state.in_(
+                    (EnrollmentState.replied, EnrollmentState.stopped)
+                ),
+            )
+            .order_by(SequenceEnrollment.ended_at.desc().nulls_last())
+        )
+        if declined is not None:
+            reason = (
+                "already replied and is in conversation"
+                if declined.state == EnrollmentState.replied
+                else "was stopped in a previous run"
+            )
+            raise SequencerError(
+                f"Prospect {reason}; re-enrolling would restart the sequence from step 1"
+            )
 
     steps = _active_steps(sequence)
     if not steps:
