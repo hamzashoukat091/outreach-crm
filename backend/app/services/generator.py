@@ -402,9 +402,11 @@ def generate_email(
     _context, quality, used = build_context(prospect)
 
     # Max tokens derived from the strategy's own limit rather than fixed: a
-    # 220-word strategy overran a flat 1200 and got cut off mid-sentence. ~2
-    # tokens per word, doubled for the model's preamble and reasoning slack.
-    result = call_claude(system, user_message, max_tokens=max(1200, strategy.max_words * 8))
+    # 220-word strategy overran a flat 1200 and got cut off mid-sentence.
+    # Raised again once the openers were rewritten to sound less templated --
+    # natural sentences run longer than the clipped three-beat version, and
+    # prospects with a long company description were failing outright.
+    result = call_claude(system, user_message, max_tokens=max(2000, strategy.max_words * 16))
     text = result["text"]
 
     # Hitting the token ceiling yields an email cut off mid-sentence. Fail loudly
@@ -428,7 +430,7 @@ def generate_email(
             user_message
             + f"\n\nThe subject line must not contain the word '{banned}'. "
             "Name something concrete about their business instead.",
-            max_tokens=max(1200, strategy.max_words * 8),
+            max_tokens=max(2000, strategy.max_words * 16),
         )
         if retry["stop_reason"] != "max_tokens":
             retry_subject, retry_body = _parse_response(retry["text"])
