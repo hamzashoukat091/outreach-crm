@@ -8,6 +8,7 @@ generation is never mistaken for a well-grounded one after the fact.
 """
 
 import logging
+import re
 from typing import Any
 
 import anthropic
@@ -307,6 +308,41 @@ def call_claude(system: str, user_message: str, max_tokens: int = 1200) -> dict[
     }
 
 
+# Words that mark a subject line as a mass send. The strategy prompts ban
+# these too, but a prompt is a request: "Client questions after hours" came
+# back from a model that had just been told three times not to use the word.
+# Stripping them here is deterministic and covers every strategy, including
+# ones added later.
+# Word-boundary template, kept as a constant so the escape survives edits.
+BOUNDARY = '\\b%s\\b'
+
+_SUBJECT_BANNED = (
+    "quick",
+    "question",
+    "questions",
+    "idea",
+    "opportunity",
+    "growth",
+    "touching base",
+    "reaching out",
+    "following up",
+    "introduction",
+)
+
+
+def _subject_has_banned_word(subject: str) -> str | None:
+    """The first spam-marker found in a subject, or None.
+
+    Word-boundary matched, so "Requesting" does not trip on "question" and a
+    firm actually called Growth Partners keeps its name.
+    """
+    lowered = subject.lower()
+    for word in _SUBJECT_BANNED:
+        if re.search(BOUNDARY % re.escape(word), lowered):
+            return word
+    return None
+
+
 def _capitalize_subject(subject: str) -> str:
     """Capitalise the first letter, leaving the rest alone.
 
@@ -380,6 +416,32 @@ def generate_email(
         )
 
     subject, body = _parse_response(text)
+
+    # One retry when the subject carries a spam marker, naming the offending
+    # word so the second attempt has something concrete to avoid. Cheaper than
+    # a filtered email, and rare enough not to matter for cost.
+    banned = _subject_has_banned_word(subject)
+    if banned:
+        logger.info("regenerating: subject contained %r (%s)", banned, subject)
+        retry = call_claude(
+            system,
+            user_message
+            + f"\n\nThe subject line must not contain the word '{banned}'. "
+            "Name something concrete about their business instead.",
+            max_tokens=max(1200, strategy.max_words * 8),
+        )
+        if retry["stop_reason"] != "max_tokens":
+            retry_subject, retry_body = _parse_response(retry["text"])
+            if not _subject_has_banned_word(retry_subject):
+                result, text = retry, retry["text"]
+                subject, body = retry_subject, retry_body
+            else:
+                # Twice is enough. Drop the word rather than spend a third call.
+                subject = _capitalize_subject(
+                    re.sub(BOUNDARY % re.escape(banned), "", subject, flags=re.I)
+                    .replace("  ", " ")
+                    .strip(" -–—:,")
+                )
 
     return {
         "subject": subject,

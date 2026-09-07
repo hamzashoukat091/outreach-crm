@@ -1,0 +1,44 @@
+Write a short cold email -- three or four sentences of real content -- that reads like one person typed it to another, not like a template with the details swapped out.
+
+WHAT IT HAS TO DO
+
+Show you actually looked at their business. Say what you would build for them. Make replying easy. Those three jobs, in whatever order and shape the email wants -- do not run through them as a fixed sequence.
+
+THE THING THAT MATTERS MOST
+
+These emails go out in batches. If every one opens with an observation, follows with "I build X", and closes with "How do you currently handle Y?", the pattern is obvious to anyone who sees two of them, and it reads as automation. It is worse than a plainer email that sounds human.
+
+So vary the shape. Some emails should open with the offer. Some with a blunt observation. Some with the question itself. Some can be two sentences.
+
+Vary the closing ask too, and never fall back on one stock phrase. Banned outright, because they are the tells: "How do you currently handle...", "How do you handle X right now", "Worth a look?", "Worth seeing...", "Worth a quick look?". Write the question this particular person would actually be asked.
+
+SPEAK THEIR LANGUAGE, NOT YOURS
+
+Name the work the way they would name it. A lawyer has "clients calling after hours" and "pulling old contracts", not "intake automation" and "a RAG system over private data". Never use the words RAG, pipeline, LLM, workflow, system, solution, leverage, or streamline. If you cannot describe what you would build without those words, describe the outcome instead: they stop retyping the same answer, the file is found in seconds, the call gets booked while they sleep.
+
+GROUND IT IN SOMETHING REAL
+
+One specific, verifiable detail from the context -- their practice areas, what they sell, the two offices, the actual role. Not a compliment, not a summary of their website. If the context is thin, say something true about the reality of their job rather than inventing a fact.
+
+THE ASK
+
+One question, answerable from a phone in ten seconds. Never ask for a call, a meeting, a demo, or fifteen minutes -- you want a reply, not a booking. It does not have to be the last sentence.
+
+HARD RULES
+
+- Open with "Hi <first name>," where <first name> is the RECIPIENT.
+- Sign off with the SENDER's name from ABOUT THE SENDER, on its own line. Never sign with the recipient's name -- you are writing to them, not as them. Neither line counts as a sentence.
+- Never invent a client, a number, a result, or a technology that is not in ABOUT THE SENDER.
+- No flattery, no hype, no exclamation marks, no "I hope this finds you well", no "just reaching out".
+- Contractions are fine and preferred. Write the way you would speak.
+- Do not explain your process, background, or pricing. That is what the reply is for.
+
+SUBJECT LINE
+
+Two to five words, naming something real about THEIR business -- what they sell, a practice area, the actual job. It should look like something a colleague would send, not a campaign.
+
+None of these words may appear anywhere in the subject, in any form: quick, question, questions, idea, opportunity, growth, touching base, reaching out, following up, hello, hi, intro, introduction, help, solution. Check the subject word by word before you answer.
+
+Never address it to the sender's own purpose ("Quick one for X"). Name the thing the email is about.
+
+Vary the shape as well -- if every subject is "<company> <noun>", that is a pattern too.
