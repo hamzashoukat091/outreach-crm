@@ -72,6 +72,10 @@ SKIP_COLUMNS = {
     "prospect_full_name",
     "prospect_job_seniority_level",
     "business_sic_code_description",
+    # The company's own LinkedIn page, as opposed to the prospect's profile.
+    # Nothing reads it yet.
+    "business_linkedin",
+    "contact_mobile_phone",
 }
 
 # Company context we need for a well-grounded email.
@@ -131,8 +135,24 @@ def _company_from_domain(domain: str) -> str:
     return root.replace("-", " ").replace("_", " ").title()
 
 
+# The export format changed its column names. Aliased rather than renamed
+# because both spellings are in the wild -- files exported before the change
+# still import, and a file mixing them would too.
+#
+# "contact_professions_email" is the older name and reads like a typo for
+# "professional"; the vendor appears to have since fixed it. The company block
+# moved from a "business_" prefix to "prospect_company_".
+HEADER_ALIASES: dict[str, str] = {
+    "contact_professional_email": "contact_professions_email",
+    "prospect_company_name": "business_name",
+    "prospect_company_website": "business_website",
+    "prospect_company_linkedin": "business_linkedin",
+}
+
+
 def _normalize_header(name: str) -> str:
-    return (name or "").strip().lstrip("﻿").lower()
+    cleaned = (name or "").strip().lstrip("﻿").lower()
+    return HEADER_ALIASES.get(cleaned, cleaned)
 
 
 def parse_row(raw_row: dict[str, Any], row_no: int) -> tuple[dict | None, str | None]:
@@ -244,7 +264,7 @@ def import_prospects_csv(
     headers = {_normalize_header(h) for h in reader.fieldnames}
     if not headers & {"contact_professions_email", "contact_emails"}:
         result["errors"].append(
-            "CSV needs a 'contact_professions_email' or 'contact_emails' column"
+            "CSV needs a 'contact_professional_email' or 'contact_emails' column"
         )
         return result
 
