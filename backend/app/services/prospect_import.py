@@ -28,55 +28,64 @@ logger = logging.getLogger("outreach.prospect_import")
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
-# Vendor column -> model attribute.
+# The CSV contract. Column name IS the field name -- no translation layer to
+# remember, and a header row that reads as documentation.
+#
+# Replaced a vendor-shaped map ("business_naics_description",
+# "contact_professions_email", "business_number_of_employees_range") that only
+# matched one exporter's spelling. When that exporter renamed its columns the
+# import silently produced prospects with no company data, which is worse than
+# a rejection: the emails still generate, just generically.
 COLUMN_MAP: dict[str, str] = {
-    "prospect_id": "prospect_ref",
-    "business_id": "business_ref",
-    "contact_professions_email": "email",
-    "contact_professional_email_status": "email_status",
-    "prospect_first_name": "first_name",
-    "prospect_last_name": "last_name",
-    "prospect_job_title": "job_title",
-    "prospect_job_department": "job_department",
-    "prospect_linkedin": "linkedin",
-    "prospect_city": "prospect_city",
-    "prospect_region_name": "prospect_region",
-    "prospect_country_name": "prospect_country",
-    "business_name": "company_name",
-    "business_domain": "company_domain",
-    "business_website": "company_website",
-    "business_business_description": "company_description",
-    "business_city_name": "company_city",
-    "business_region": "company_region",
-    "business_country_name": "company_country",
-    "business_number_of_employees_range": "employee_range",
-    "business_yearly_revenue_range": "revenue_range",
-    "business_naics_description": "industry",
-    "business_naics": "naics",
-    "business_sic_code": "sic_code",
-    "business_logo": "company_logo",
+    "email": "email",
+    "email_status": "email_status",
+    "first_name": "first_name",
+    "last_name": "last_name",
+    "job_title": "job_title",
+    "job_department": "job_department",
+    "linkedin": "linkedin",
+    "city": "prospect_city",
+    "region": "prospect_region",
+    "country": "prospect_country",
+    "company_name": "company_name",
+    "company_domain": "company_domain",
+    "company_website": "company_website",
+    "company_description": "company_description",
+    "company_city": "company_city",
+    "company_region": "company_region",
+    "company_country": "company_country",
+    "employee_range": "employee_range",
+    "revenue_range": "revenue_range",
+    "industry": "industry",
+    "prospect_ref": "prospect_ref",
+    "business_ref": "business_ref",
 }
 
 JSON_LIST_COLUMNS = {
-    "prospect_skills": "skills",
-    "prospect_interests": "interests",
-    "prospect_experience": "experience",
-    "business_business_intent_topics": "intent_topics",
+    "skills": "skills",
+    "interests": "interests",
 }
 
-# Ignored: either redundant or pure vendor bookkeeping.
+# Accepted and ignored, so a file carrying them is not rejected for it.
 SKIP_COLUMNS = {
     "row_num",
     "created_at",
-    "contact_emails",
-    "prospect_full_name",
-    "prospect_job_seniority_level",
-    "business_sic_code_description",
-    # The company's own LinkedIn page, as opposed to the prospect's profile.
-    # Nothing reads it yet.
-    "business_linkedin",
-    "contact_mobile_phone",
+    "full_name",
+    "notes",
 }
+
+REQUIRED_COLUMNS = ("email",)
+
+# Present but empty is fine; absent entirely triggers the "needs info"
+# warning on every row, so the import result names them.
+RECOMMENDED_COLUMNS = (
+    "first_name",
+    "job_title",
+    "company_name",
+    "company_description",
+    "industry",
+    "employee_range",
+)
 
 # Company context we need for a well-grounded email.
 COMPANY_SIGNALS = ("company_name", "company_description", "industry", "employee_range")
@@ -135,39 +144,17 @@ def _company_from_domain(domain: str) -> str:
     return root.replace("-", " ").replace("_", " ").title()
 
 
-# The export format changed its column names. Aliased rather than renamed
-# because both spellings are in the wild -- files exported before the change
-# still import, and a file mixing them would too.
-#
-# "contact_professions_email" is the older name and reads like a typo for
-# "professional"; the vendor appears to have since fixed it. The company block
-# moved from a "business_" prefix to "prospect_company_".
-HEADER_ALIASES: dict[str, str] = {
-    "contact_professional_email": "contact_professions_email",
-    "prospect_company_name": "business_name",
-    "prospect_company_website": "business_website",
-    "prospect_company_linkedin": "business_linkedin",
-}
-
-
 def _normalize_header(name: str) -> str:
-    cleaned = (name or "").strip().lstrip("﻿").lower()
-    return HEADER_ALIASES.get(cleaned, cleaned)
+    """Lowercase, trimmed, BOM stripped. No aliasing: one spelling per field,
+    so a mistyped header is reported rather than silently ignored."""
+    return (name or "").strip().lstrip("﻿").lower()
 
 
 def parse_row(raw_row: dict[str, Any], row_no: int) -> tuple[dict | None, str | None]:
     """Turn one CSV row into model kwargs. Returns (payload, error)."""
     row = {_normalize_header(k): v for k, v in raw_row.items() if k is not None}
 
-    email = _clean(row.get("contact_professions_email")).lower()
-    if not email:
-        # Fall back to the first professional address in contact_emails.
-        for entry in _parse_json_list(row.get("contact_emails", "")):
-            if isinstance(entry, dict) and "professional" in str(entry.get("type", "")):
-                email = _clean(entry.get("address")).lower()
-                if email:
-                    break
-
+    email = _clean(row.get("email")).lower()
     if not email:
         return None, f"row {row_no}: no email address"
     if not EMAIL_RE.match(email):
@@ -187,22 +174,15 @@ def parse_row(raw_row: dict[str, Any], row_no: int) -> tuple[dict | None, str | 
         if parsed:
             payload[attr] = parsed
 
-    seniority = _parse_bracket_scalar(row.get("prospect_job_seniority_level", ""))
+    # Still bracket-tolerant: exports sometimes write `["cxo"]` for a single
+    # value, and rejecting that would be pedantic when the intent is clear.
+    seniority = _parse_bracket_scalar(row.get("seniority", ""))
     if seniority:
         payload["seniority"] = seniority
 
     for attr in ("employee_range", "revenue_range"):
         if payload.get(attr):
             payload[attr] = _parse_bracket_scalar(payload[attr])
-
-    # Keep alternate addresses; useful when a work address bounces.
-    others = [
-        e.get("address")
-        for e in _parse_json_list(row.get("contact_emails", ""))
-        if isinstance(e, dict) and _clean(e.get("address")) and e.get("address", "").lower() != email
-    ]
-    if others:
-        payload["other_emails"] = others
 
     # Company recovery for rows that arrived without a company block.
     domain = payload.get("company_domain") or _domain_from_email(email)
@@ -220,9 +200,7 @@ def parse_row(raw_row: dict[str, Any], row_no: int) -> tuple[dict | None, str | 
         payload["company_inferred"] = True
 
     # Preserve unmapped columns rather than dropping them.
-    known = set(COLUMN_MAP) | set(JSON_LIST_COLUMNS) | SKIP_COLUMNS | {
-        "prospect_job_seniority_level"
-    }
+    known = set(COLUMN_MAP) | set(JSON_LIST_COLUMNS) | SKIP_COLUMNS | {"seniority"}
     extra = {k: _clean(v) for k, v in row.items() if k not in known and _clean(v)}
     if extra:
         payload["extra"] = extra
@@ -262,11 +240,40 @@ def import_prospects_csv(
         return result
 
     headers = {_normalize_header(h) for h in reader.fieldnames}
-    if not headers & {"contact_professions_email", "contact_emails"}:
+    accepted = set(COLUMN_MAP) | set(JSON_LIST_COLUMNS) | SKIP_COLUMNS | {"seniority"}
+
+    # Reject on a missing required column, and say what the file has instead
+    # of only what it lacks -- the usual cause is a vendor export whose names
+    # differ, and "email" alone does not help you find that.
+    missing_required = [c for c in REQUIRED_COLUMNS if c not in headers]
+    if missing_required:
+        found = ", ".join(sorted(headers)[:8]) or "none"
         result["errors"].append(
-            "CSV needs a 'contact_professional_email' or 'contact_emails' column"
+            f"Missing required column: {', '.join(missing_required)}. "
+            f"Found instead: {found}"
+            + (" …" if len(headers) > 8 else "")
+        )
+        result["errors"].append(
+            "Rename the headers to match: "
+            + ", ".join(REQUIRED_COLUMNS + RECOMMENDED_COLUMNS)
         )
         return result
+
+    # Everything else is advisory: import, then say what will be thin.
+    unknown = sorted(h for h in headers if h and h not in accepted)
+    if unknown:
+        result["errors"].append(
+            f"Ignored {len(unknown)} unrecognised column(s): {', '.join(unknown[:6])}"
+            + (" …" if len(unknown) > 6 else "")
+        )
+
+    absent_recommended = [c for c in RECOMMENDED_COLUMNS if c not in headers]
+    if absent_recommended:
+        result["errors"].append(
+            "No column for: "
+            + ", ".join(absent_recommended)
+            + ". Emails will be written without that context."
+        )
 
     seen: set[str] = set()
 

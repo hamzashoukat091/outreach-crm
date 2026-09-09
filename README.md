@@ -208,6 +208,53 @@ docker compose exec api python -m pytest tests/ -q
 
 `.env` is gitignored. Keep your API key there, never in `docker-compose.yml`.
 
+## CSV import format
+
+One column is required. The column name **is** the field name -- there is no
+translation layer, so the header row reads as documentation.
+
+See [sample-prospects.csv](sample-prospects.csv) for a working file.
+
+| Column | |
+|---|---|
+| `email` | **Required.** The import is rejected without it. |
+| `company_description` | The single biggest lever on email quality -- it is what lets the AI name their actual work rather than write "running a dental practice usually means...". |
+| `company_name`, `industry`, `employee_range` | With `company_description`, these four clear the "needs company info" warning. |
+| `first_name`, `job_title` | Not required, but the greeting and most subject lines use them. |
+
+Everything else is optional: `last_name`, `job_department`, `seniority`,
+`linkedin`, `city`, `region`, `country`, `skills`, `interests`,
+`company_domain`, `company_website`, `company_city`, `company_region`,
+`company_country`, `revenue_range`, `email_status`, `prospect_ref`,
+`business_ref`.
+
+A minimal file:
+
+```csv
+email,first_name,company_name,company_description,industry,employee_range
+robert@example.com,Robert,Blu Dental,"Three-location family practice",Dentistry,11-50
+```
+
+Unrecognised columns are ignored and reported rather than silently dropped.
+`skills` and `interests` accept either a JSON array or a comma-separated list.
+
+### Converting a vendor export
+
+Enrichment tools use their own column names, and they change them. To rewrite
+one into this format:
+
+```bash
+python backend/scripts/csv_to_standard.py their-export.csv
+```
+
+It writes `their-export-standard.csv` and names any column it dropped.
+
+Aliasing those vendor names inside the importer was the alternative and it
+fails quietly: when an exporter renamed its company columns, rows still
+imported -- just with no company data, so the emails generated anyway and
+came out generic. A rejection you can act on beats an import you cannot see
+is wrong.
+
 ## Guides
 
 | | |
