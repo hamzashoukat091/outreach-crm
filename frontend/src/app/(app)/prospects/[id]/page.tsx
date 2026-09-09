@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { AutomationConversation } from "@/components/automation-conversation";
 import { CopyButton } from "@/components/copy-button";
 import { EnrollmentReset } from "@/components/enrollment-reset";
+import { ProspectEdit } from "@/components/prospect-edit";
 import { PipelineModeBadge } from "@/components/automation-ui";
 import { DraftCard } from "@/components/draft-card";
 import { ProspectPanel } from "@/components/prospect-panel";
@@ -124,7 +125,19 @@ export default async function ProspectDetailPage({
           )}
 
           <section className="card p-5">
-            <h2 className="mb-4 text-sm font-semibold text-ink">Details</h2>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-ink">Details</h2>
+              {/* The API has always accepted these edits; only the four
+                  company-context fields were ever reachable, and only while
+                  the record was incomplete. A wrong name or a typo'd address
+                  had no fix in the UI at all. */}
+              <ProspectEdit
+                prospect={prospect}
+                hasSentMail={automationMessages.some(
+                  (m) => m.direction === "outbound" && m.state === "sent",
+                )}
+              />
+            </div>
             <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
               {details
                 .filter(([, value]) => value)

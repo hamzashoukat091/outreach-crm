@@ -150,7 +150,10 @@ export async function updateProspectAction(
     "employee_range",
     "revenue_range",
     "company_city",
+    "company_country",
     "company_description",
+    "prospect_city",
+    "prospect_country",
     "notes",
   ]) {
     if (formData.has(field)) {
