@@ -161,6 +161,34 @@ export function formatInZone(date: Date, timeZone: string): string {
   }).format(date);
 }
 
+/** "9:00 am" today, "tomorrow 9:00 am" otherwise, "Mon 9:00 am" beyond that.
+ *
+ *  The full formatInZone string is right for a schedule preview and too long
+ *  for a sidebar line, where the day is usually redundant -- a window that
+ *  reopens in two hours does not need a date attached. */
+export function shortTimeInZone(date: Date, timeZone: string, from = new Date()): string {
+  const time = new Intl.DateTimeFormat("en-GB", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone,
+  }).format(date);
+
+  // Compare calendar days *in the send timezone*, not the viewer's: "today"
+  // has to mean today where the window is defined.
+  const dayIn = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone, dateStyle: "short" }).format(d);
+  const today = dayIn(from);
+  const target = dayIn(date);
+  if (target === today) return time;
+
+  const tomorrow = dayIn(new Date(from.getTime() + 86_400_000));
+  if (target === tomorrow) return `tomorrow ${time}`;
+
+  const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone }).format(date);
+  return `${weekday} ${time}`;
+}
+
 /** "in 3 days" / "tomorrow" / "today" — the human reading of a gap. */
 export function relativeDay(from: Date, to: Date): string {
   const ms = to.getTime() - from.getTime();

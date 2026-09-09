@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { AutomationStatus } from "@/lib/types";
+import { shortTimeInZone } from "@/lib/schedule-preview";
 
 /** Persistent "is this thing armed?" readout, pinned in the sidebar.
  *
@@ -47,6 +48,15 @@ export function LiveIndicator({ compact = false }: { compact?: boolean } = {}) {
   const paused = status.sending_paused;
   const live = !status.dry_run && !paused;
 
+  // The window only qualifies the live state. While paused or in dry run the
+  // question "is the window open" is moot -- nothing is going out either way,
+  // and saying so twice buries the reason that actually matters.
+  const windowShut = live && !status.window_open;
+  const opensAt =
+    windowShut && status.window_opens_at
+      ? shortTimeInZone(new Date(status.window_opens_at), status.send_timezone)
+      : null;
+
   const tone = live
     ? "border-send/30 bg-send-soft text-send-ink"
     : paused
@@ -55,7 +65,11 @@ export function LiveIndicator({ compact = false }: { compact?: boolean } = {}) {
 
   const label = live ? "Live" : paused ? "Paused" : "Dry run";
   const detail = live
-    ? "Emails reach real people"
+    ? windowShut
+      ? opensAt
+        ? `Window closed · opens ${opensAt}`
+        : "Window closed"
+      : "Window open · emails reach real people"
     : paused
       ? "Sending is stopped"
       : "Nothing is delivered";
@@ -74,7 +88,7 @@ export function LiveIndicator({ compact = false }: { compact?: boolean } = {}) {
           font-semibold ${tone}`}
       >
         <span className="relative flex h-1.5 w-1.5 shrink-0">
-          {live && (
+          {live && status.window_open && (
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full
               bg-send opacity-60 motion-reduce:hidden" />
           )}
@@ -94,8 +108,10 @@ export function LiveIndicator({ compact = false }: { compact?: boolean } = {}) {
           hover:brightness-[0.98] ${tone}`}
       >
         <span className="relative flex h-2 w-2 shrink-0">
-          {/* Only the armed state pulses. Motion here means "this is running". */}
-          {live && (
+          {/* Pulses only when a send could happen this minute: armed AND
+              inside the window. A pulsing dot on a closed window would be
+              claiming activity that cannot occur. */}
+          {live && status.window_open && (
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full
               bg-send opacity-60 motion-reduce:hidden" />
           )}
@@ -103,7 +119,10 @@ export function LiveIndicator({ compact = false }: { compact?: boolean } = {}) {
         </span>
         <span className="min-w-0">
           <span className="block text-xs font-semibold leading-tight">{label}</span>
-          <span className="block truncate text-[11px] leading-tight opacity-80">{detail}</span>
+          {/* Wraps rather than truncates: "Window closed · opens tomorrow
+              12:00 pm" is longer than the sidebar and the opening time is the
+              half that would be cut. */}
+          <span className="block text-[11px] leading-tight opacity-80">{detail}</span>
         </span>
       </Link>
     </div>

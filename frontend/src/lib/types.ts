@@ -266,6 +266,9 @@ export interface AutomationStatus {
   dry_run: boolean;
   sending_paused: boolean;
   window_open: boolean;
+  /** Null while the window is open; otherwise when sending resumes. */
+  window_opens_at: string | null;
+  send_timezone: string;
   sends_this_hour: number;
   hourly_send_limit: number;
   sends_today: number;

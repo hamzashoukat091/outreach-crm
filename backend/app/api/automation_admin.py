@@ -32,6 +32,7 @@ from app.schemas.automation import (
 )
 from app.services.automation_settings import (
     get_settings_row,
+    next_window_open,
     sends_in_last_day,
     sends_in_last_hour,
     within_send_window,
@@ -295,10 +296,16 @@ def automation_status(db: Session = Depends(get_db)):
     alive_horizon = timedelta(seconds=max(60, env_settings.worker_interval_seconds * 4))
     worker_alive = bool(heartbeat and (now - heartbeat) < alive_horizon)
 
+    window_open = within_send_window(row, now)
+
     return AutomationStatus(
         dry_run=row.dry_run,
         sending_paused=row.sending_paused,
-        window_open=within_send_window(row, now),
+        window_open=window_open,
+        # Only when shut: "opens at" while it is already open is noise, and
+        # the value would be tomorrow's opening rather than anything useful.
+        window_opens_at=None if window_open else next_window_open(row, now),
+        send_timezone=row.timezone,
         sends_this_hour=sends_in_last_hour(db, now),
         hourly_send_limit=row.hourly_send_limit,
         sends_today=sends_in_last_day(db, now),

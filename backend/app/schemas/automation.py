@@ -384,6 +384,10 @@ class AutomationStatus(BaseModel):
     dry_run: bool
     sending_paused: bool
     window_open: bool
+    # Null while the window is open. Lets the UI say when sending resumes
+    # instead of only that it has stopped.
+    window_opens_at: datetime | None = None
+    send_timezone: str = "UTC"
     sends_this_hour: int
     hourly_send_limit: int
     sends_today: int
