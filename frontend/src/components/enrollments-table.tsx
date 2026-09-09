@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useState, useTransition } from "react";
 import {
   pauseEnrollmentAction,
+  resetEnrollmentAction,
   resumeEnrollmentAction,
   stopEnrollmentAction,
 } from "@/app/automation-actions";
@@ -45,6 +46,26 @@ export function EnrollmentsTable({
   function resume(row: EnrollmentRow) {
     startTransition(async () => {
       const result = await resumeEnrollmentAction(row.id);
+      show(result);
+      if (result.ok) router.refresh();
+    });
+  }
+
+  // Deleting the run, so it asks first -- but plainly: what disappears is a
+  // record of emails that were never sent.
+  function reset(row: EnrollmentRow) {
+    if (
+      !window.confirm(
+        `Reset ${label(row)}?
+
+This clears the stopped run so they can be ` +
+          `enrolled again. Emails already sent are kept.`,
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await resetEnrollmentAction(row.id);
       show(result);
       if (result.ok) router.refresh();
     });
@@ -170,6 +191,18 @@ export function EnrollmentsTable({
                           Stop
                         </button>
                       )}
+                      {/* An ended run had no inverse: resume takes only paused
+                          enrollments, so a misclicked Stop was permanent. */}
+                      {(row.state === "stopped" || row.state === "completed") && (
+                        <button
+                          onClick={() => reset(row)}
+                          disabled={pending}
+                          className="btn-ghost h-8 text-xs"
+                          title="Clear this run so the prospect can be enrolled again. Sent emails are kept."
+                        >
+                          Reset
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -180,7 +213,7 @@ export function EnrollmentsTable({
                       <p className="text-xs text-muted">
                         Ending the sequence for{" "}
                         <span className="text-ink">{label(row)}</span> cancels
-                        everything unsent. This can&apos;t be resumed.
+                        everything unsent. It can&apos;t be resumed, but you can Reset it afterwards to make them enrollable again.
                       </p>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <button

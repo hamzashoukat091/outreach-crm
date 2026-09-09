@@ -407,6 +407,11 @@ export const api = {
   resumeEnrollment: (id: string) =>
     request<EnrollmentRow>(`/api/automation/enrollments/${id}/resume`, { method: "POST" }),
 
+  /** Undo an ended run: deletes the enrollment so the prospect is enrollable
+   *  again. Sent emails are kept. 204, so nothing comes back. */
+  resetEnrollment: (id: string) =>
+    request<void>(`/api/automation/enrollments/${id}/reset`, { method: "POST" }),
+
   stopEnrollment: (id: string, returnToManual = false) =>
     request<EnrollmentRow>(
       `/api/automation/enrollments/${id}/stop${

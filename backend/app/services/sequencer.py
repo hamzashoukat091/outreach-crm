@@ -449,6 +449,67 @@ def stop(
     db.flush()
 
 
+def reset_enrollment(db: Session, enrollment: SequenceEnrollment) -> Prospect:
+    """Undo an ended run so the prospect can be enrolled again.
+
+    Stopping was one-way: resume() takes only paused enrollments, the row
+    leaves the Running tab, and the re-enrollment lock treats a stopped run as
+    a decision not to contact them. All three are right for a deliberate stop
+    and wrong for a misclick, which had no route back at all.
+
+    Deletes the enrollment and the drafts that never went out, so the prospect
+    reads as never-enrolled rather than as someone carrying a dead run. What
+    was actually SENT is kept -- those emails exist in the world, the thread is
+    real, and erasing them would make the record lie.
+
+    Refuses an open enrollment: stop it first, so pulling the rug from under a
+    live sequence is always two deliberate steps.
+    """
+    if enrollment.is_open:
+        raise SequencerError(
+            "This enrollment is still running. Stop it first, then reset."
+        )
+
+    prospect = enrollment.prospect
+    sent_before = [
+        m
+        for m in enrollment.messages
+        if m.state in (MessageState.sent, MessageState.failed)
+    ]
+
+    for message in list(enrollment.messages):
+        if message in sent_before:
+            # Keep the record, drop the link: the enrollment is going away and
+            # the FK would take a real sent email with it.
+            message.enrollment_id = None
+        else:
+            db.delete(message)
+
+    log_event(
+        db,
+        prospect.id,
+        ProspectEventType.unenrolled,
+        f"Enrollment reset; prospect can be enrolled again"
+        + (f" ({len(sent_before)} sent email(s) kept)" if sent_before else ""),
+        {"sequence_id": str(enrollment.sequence_id), "kept_sent": len(sent_before)},
+    )
+
+    db.delete(enrollment)
+    db.flush()
+
+    # Back to the start of the funnel, unless a status outranks this run.
+    # A bounce is about the address and a won/not_interested is a human
+    # judgement -- neither should be erased by undoing an enrollment.
+    if prospect.status not in (
+        ProspectStatus.bounced,
+        ProspectStatus.not_interested,
+        ProspectStatus.won,
+    ):
+        prospect.status = ProspectStatus.new
+    db.flush()
+    return prospect
+
+
 def on_reply(db: Session, enrollment: SequenceEnrollment, inbound_msg: Message) -> None:
     """They answered: the sequence's job is done, reply mode takes over."""
     _cancel_pending(db, enrollment)  # sequence steps only; reply drafts survive

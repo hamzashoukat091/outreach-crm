@@ -38,7 +38,13 @@ from app.schemas.automation import (
     TemplateStepOut,
 )
 from app.services.sequence_templates import BY_KEY, TEMPLATES
-from app.services.sequencer import SequencerError, enroll, log_event, stop
+from app.services.sequencer import (
+    SequencerError,
+    enroll,
+    log_event,
+    reset_enrollment,
+    stop,
+)
 
 router = APIRouter(prefix="/api/automation", tags=["automation"])
 
@@ -487,6 +493,22 @@ def resume_enrollment(enrollment_id: uuid.UUID, db: Session = Depends(get_db)):
     enrollment.state = EnrollmentState.active
     db.commit()
     return _enrollment_out(db, enrollment)
+
+
+@router.post("/enrollments/{enrollment_id}/reset", status_code=status.HTTP_204_NO_CONTENT)
+def reset_enrollment_endpoint(enrollment_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Undo an ended run so the prospect is enrollable again.
+
+    Stopping had no inverse: resume() accepts only paused enrollments, so a
+    misclick left the prospect out of the funnel with nothing in the UI to
+    undo it.
+    """
+    enrollment = _get_enrollment(db, enrollment_id)
+    try:
+        reset_enrollment(db, enrollment)
+    except SequencerError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    db.commit()
 
 
 @router.post("/enrollments/{enrollment_id}/stop", response_model=EnrollmentOut)

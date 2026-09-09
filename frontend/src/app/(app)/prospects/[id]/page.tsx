@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { api } from "@/lib/api";
 import { AutomationConversation } from "@/components/automation-conversation";
 import { CopyButton } from "@/components/copy-button";
+import { EnrollmentReset } from "@/components/enrollment-reset";
 import { PipelineModeBadge } from "@/components/automation-ui";
 import { DraftCard } from "@/components/draft-card";
 import { ProspectPanel } from "@/components/prospect-panel";
@@ -230,6 +231,15 @@ export default async function ProspectDetailPage({
             <AutomationConversation
               messages={automationMessages}
               prospectId={prospect.id}
+            />
+          )}
+
+          {/* Only renders for an ended run; the component decides. */}
+          {prospect.enrollment_id && prospect.enrollment_state && (
+            <EnrollmentReset
+              enrollmentId={prospect.enrollment_id}
+              state={prospect.enrollment_state}
+              prospectName={prospect.full_name || prospect.email}
             />
           )}
 

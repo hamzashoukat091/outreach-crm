@@ -298,6 +298,18 @@ export async function resumeEnrollmentAction(id: string): Promise<ActionState> {
   return { ok: true, message: "Enrollment resumed." };
 }
 
+export async function resetEnrollmentAction(id: string): Promise<ActionState> {
+  try {
+    await api.resetEnrollment(id);
+  } catch (error) {
+    return fail(error);
+  }
+
+  refreshAutomation();
+  revalidatePath("/prospects");
+  return { ok: true, message: "Enrollment reset. The prospect can be enrolled again." };
+}
+
 export async function stopEnrollmentAction(
   id: string,
   returnToManual = false,
