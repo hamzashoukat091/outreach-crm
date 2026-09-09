@@ -87,7 +87,10 @@ def flatten(value: str) -> str:
     try:
         parsed = json.loads(text)
     except (json.JSONDecodeError, ValueError):
-        return text
+        # Not JSON, but still bracketed -- the export writes ranges as a bare
+        # [11-50], which is neither a JSON array nor a value anyone wants to
+        # read in a spreadsheet.
+        return text[1:-1].strip().strip('"').strip()
     if isinstance(parsed, list):
         flat = [str(p).strip() for p in parsed if isinstance(p, (str, int, float))]
         return ", ".join(flat)
