@@ -128,6 +128,19 @@ export function ProspectToolbar({
           </select>
         )}
 
+        {/* Rows per page. Changing it returns to page 1 -- page 3 of 25 does
+            not exist at 100, and landing on an empty page reads as data loss. */}
+        <select
+          defaultValue={params.get("per") ?? "50"}
+          onChange={(e) => setParam("per", e.target.value)}
+          aria-label="Rows per page"
+          className="input min-h-11 w-full min-w-0 text-sm sm:h-9 sm:w-auto sm:py-0"
+        >
+          <option value="25">25 rows</option>
+          <option value="50">50 rows</option>
+          <option value="100">100 rows</option>
+        </select>
+
         <div className="col-span-2 flex items-center gap-2 sm:col-span-1 sm:ml-auto sm:shrink-0">
           <label className="btn-secondary h-9 flex-1 cursor-pointer whitespace-nowrap sm:flex-none">
             Import CSV

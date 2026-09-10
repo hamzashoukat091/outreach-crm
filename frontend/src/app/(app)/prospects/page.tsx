@@ -8,10 +8,11 @@ import { ApiError } from "@/components/api-error";
 
 export const dynamic = "force-dynamic";
 
-// 100 rather than 25: a typical sourcing run is 30-50 rows, and paging one of
-// those meant "select all" quietly took only the first page. Larger runs still
-// page, which is what the select-all-matching link in the table is for.
-const PAGE_SIZE = 100;
+// A typical sourcing run is 30-50 rows, so 50 shows most of one without
+// paging. The picker in the toolbar overrides it; anything outside the
+// allowed set falls back here rather than trusting a hand-edited URL.
+const PAGE_SIZES = [25, 50, 100] as const;
+const DEFAULT_PAGE_SIZE = 50;
 
 export default async function ProspectsPage({
   searchParams,
@@ -24,12 +25,17 @@ export default async function ProspectsPage({
     completeness?: string;
     sort?: string;
     direction?: string;
+    per?: string;
     view?: string;
     page?: string;
   }>;
 }) {
   const params = await searchParams;
   const page = Number(params.page ?? "1") || 1;
+  const requestedSize = Number(params.per);
+  const pageSize = (PAGE_SIZES as readonly number[]).includes(requestedSize)
+    ? requestedSize
+    : DEFAULT_PAGE_SIZE;
   const archivedView = params.view === "archived";
 
   let data;
@@ -48,7 +54,7 @@ export default async function ProspectsPage({
         direction: params.direction,
         archived: archivedView,
         page,
-        page_size: PAGE_SIZE,
+        page_size: pageSize,
       }),
       api.listStrategies(),
       api.analytics().catch(() => null),
@@ -60,7 +66,7 @@ export default async function ProspectsPage({
     );
   }
 
-  const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(data.total / pageSize));
   // Reply strategies belong to the automation engine, not manual generation.
   const activeStrategies = strategies.filter((s) => s.is_active && s.kind !== "reply");
   const incomplete = analytics?.incomplete ?? 0;
@@ -153,8 +159,8 @@ export default async function ProspectsPage({
               "30 prospects" while 25 are on screen, and "Page 1 of 2" does
               not close that gap. */}
           <span className="text-muted tabular-nums">
-            Showing {(page - 1) * PAGE_SIZE + 1}–
-            {Math.min(page * PAGE_SIZE, data.total)} of {data.total}
+            Showing {(page - 1) * pageSize + 1}–
+            {Math.min(page * pageSize, data.total)} of {data.total}
           </span>
           <div className="flex gap-2">
             {page > 1 && (

@@ -376,8 +376,14 @@ export function ProspectsTable({
             Clear
           </button>
 
-          {selected.size > 25 && (
-            <span className="text-xs text-rose-600">Max 25 per batch.</span>
+          {/* Names the button it constrains. Sat bare among the others it
+              read as a limit on the whole bar, so "Enroll 38" next to
+              "Max 25 per batch" looked like a contradiction rather than two
+              different actions with different costs. */}
+          {!archivedView && selected.size > 25 && (
+            <span className="w-full text-xs text-rose-500">
+              Generate takes at most 25 at a time — enrolling has no such limit.
+            </span>
           )}
         </div>
       )}
