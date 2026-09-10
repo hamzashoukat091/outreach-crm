@@ -201,29 +201,52 @@ def list_categories(db: Session = Depends(get_db)):
 # ---------- CRUD ----------
 
 
-@router.get("", response_model=ProspectList)
-def list_prospects(
-    db: Session = Depends(get_db),
-    q: str | None = Query(None, description="Search name, email, company, or title"),
-    prospect_status: ProspectStatus | None = Query(None, alias="status"),
-    industry: str | None = None,
-    category: str | None = Query(None, description="Which sourcing run they came from"),
-    completeness: str | None = Query(None, pattern="^(complete|incomplete)$"),
-    has_draft: bool | None = None,
-    archived: bool = Query(
-        False, description="Show archived prospects instead of active ones"
-    ),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(25, ge=1, le=200),
-):
+class ProspectFilters:
+    """The list filters, shared by the paged list and the id-only endpoint.
+
+    Extracted so "select all matching" cannot drift from what the table shows.
+    A second hand-written copy of these clauses would eventually select a
+    different set than the one on screen, which is the one thing a
+    select-all must never do.
+    """
+
+    def __init__(
+        self,
+        q: str | None = Query(None, description="Search name, email, company, or title"),
+        prospect_status: ProspectStatus | None = Query(None, alias="status"),
+        industry: str | None = None,
+        pipeline_mode: str | None = Query(
+            None,
+            pattern="^(manual|automated)$",
+            description="Manual outreach, or handed to the automation engine",
+        ),
+        category: str | None = Query(
+            None, description="Which sourcing run they came from"
+        ),
+        completeness: str | None = Query(None, pattern="^(complete|incomplete)$"),
+        has_draft: bool | None = None,
+        archived: bool = Query(
+            False, description="Show archived prospects instead of active ones"
+        ),
+    ):
+        self.q = q
+        self.status = prospect_status
+        self.industry = industry
+        self.pipeline_mode = pipeline_mode
+        self.category = category
+        self.completeness = completeness
+        self.has_draft = has_draft
+        self.archived = archived
+
+
+def _filtered(stmt, f: ProspectFilters):
+    """Apply the shared filters to a select over Prospect."""
     # Archived prospects are hidden unless explicitly asked for -- that is the
     # point of archiving.
-    stmt = select(Prospect).options(selectinload(Prospect.drafts)).where(
-        Prospect.is_archived.is_(archived)
-    )
+    stmt = stmt.where(Prospect.is_archived.is_(f.archived))
 
-    if q:
-        pattern = f"%{q.lower()}%"
+    if f.q:
+        pattern = f"%{f.q.lower()}%"
         stmt = stmt.where(
             or_(
                 func.lower(Prospect.email).like(pattern),
@@ -233,31 +256,68 @@ def list_prospects(
                 func.lower(func.coalesce(Prospect.job_title, "")).like(pattern),
             )
         )
-    if prospect_status:
-        stmt = stmt.where(Prospect.status == prospect_status)
-    if industry:
-        stmt = stmt.where(Prospect.industry == industry)
-    if category:
+    if f.status:
+        stmt = stmt.where(Prospect.status == f.status)
+    if f.industry:
+        stmt = stmt.where(Prospect.industry == f.industry)
+    if f.pipeline_mode:
+        stmt = stmt.where(Prospect.pipeline_mode == f.pipeline_mode)
+    if f.category:
         # "none" is the only way to ask for rows imported before categories
         # existed, since an empty value means "no filter".
         stmt = stmt.where(
-            Prospect.category.is_(None) if category == "none"
-            else Prospect.category == category
+            Prospect.category.is_(None) if f.category == "none"
+            else Prospect.category == f.category
         )
-    if completeness == "complete":
+    if f.completeness == "complete":
         stmt = stmt.where(Prospect.is_complete.is_(True))
-    elif completeness == "incomplete":
+    elif f.completeness == "incomplete":
         stmt = stmt.where(Prospect.is_complete.is_(False))
 
-    if has_draft is not None:
+    if f.has_draft is not None:
         live_drafts = (
             select(EmailDraft.prospect_id)
             .where(EmailDraft.status != DraftStatus.discarded)
             .distinct()
         )
         stmt = stmt.where(
-            Prospect.id.in_(live_drafts) if has_draft else ~Prospect.id.in_(live_drafts)
+            Prospect.id.in_(live_drafts) if f.has_draft else ~Prospect.id.in_(live_drafts)
         )
+    return stmt
+
+
+@router.get("/ids", response_model=list[uuid.UUID])
+def list_prospect_ids(
+    db: Session = Depends(get_db),
+    filters: ProspectFilters = Depends(),
+    limit: int = Query(2000, ge=1, le=10000),
+):
+    """Every id matching the current filters, for "select all N matching".
+
+    Ids only: the table already holds the rows it is showing, and shipping
+    full prospects for a 2000-row selection to tick some checkboxes would be
+    pure weight. Capped so a select-all on an empty filter cannot try to
+    materialise the entire database.
+    """
+    return list(
+        db.scalars(
+            _filtered(select(Prospect.id), filters)
+            .order_by(Prospect.is_complete.desc(), Prospect.created_at.desc())
+            .limit(limit)
+        ).all()
+    )
+
+
+@router.get("", response_model=ProspectList)
+def list_prospects(
+    db: Session = Depends(get_db),
+    filters: ProspectFilters = Depends(),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=200),
+):
+    stmt = _filtered(
+        select(Prospect).options(selectinload(Prospect.drafts)), filters
+    )
 
     total = db.scalar(
         select(func.count()).select_from(stmt.order_by(None).subquery())

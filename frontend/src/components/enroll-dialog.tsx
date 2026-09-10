@@ -29,10 +29,17 @@ import { SendIcon } from "@/components/send-icon";
  */
 export function EnrollDialog({
   prospects,
+  extraIds = [],
   onClose,
   onDone,
 }: {
   prospects: Prospect[];
+  /**
+   * Selected ids that are not on the current page, from "select all matching".
+   * Their enrollment state is unknown here, so they are always submitted and
+   * the backend decides -- it already skips per prospect with a reason.
+   */
+  extraIds?: string[];
   onClose: () => void;
   onDone: (result: ActionState) => void;
 }) {
@@ -93,9 +100,14 @@ export function EnrollDialog({
     return { running, finished, ready };
   }, [prospects]);
 
-  const eligible = allowReenroll
+  const eligibleOnPage = allowReenroll
     ? [...groups.ready, ...groups.finished]
     : groups.ready;
+  // Off-page ids go through unfiltered: the backend refuses a suppressed,
+  // already-enrolled or previously-declined prospect on its own and reports
+  // each skip, so guessing here would only make the count less accurate.
+  const submitIds = [...eligibleOnPage.map((p) => p.id), ...extraIds];
+  const totalSelected = prospects.length + extraIds.length;
 
   const selectedSequence = sequences?.find((s) => s.id === sequenceId) ?? null;
   const usable = (sequences ?? []).filter((s) => s.is_active && s.step_count > 0);
@@ -191,7 +203,7 @@ export function EnrollDialog({
     startTransition(async () => {
       const result = await enrollProspectsAction(
         sequenceId,
-        eligible.map((p) => p.id),
+        submitIds,
         mode,
         mode === "send_at" && sendAt ? new Date(sendAt).toISOString() : undefined,
         allowReenroll,
@@ -217,7 +229,7 @@ export function EnrollDialog({
           <div>
             <h2 className="text-sm font-semibold text-ink">Enroll in a sequence</h2>
             <p className="mt-0.5 text-xs text-muted">
-              {prospects.length} prospect{prospects.length === 1 ? "" : "s"} selected.
+              {totalSelected} prospect{totalSelected === 1 ? "" : "s"} selected.
               Enrolling moves them to automation — no handoff needed.
             </p>
           </div>
@@ -259,6 +271,16 @@ export function EnrollDialog({
                 </option>
               ))}
             </select>
+
+            {/* Selected beyond this page, so their state is not loaded here.
+                Saying so beats a confident count that quietly excluded them. */}
+            {extraIds.length > 0 && (
+              <p className="mt-3 rounded-lg border border-line bg-surface-2/60 px-3 py-2 text-xs text-muted">
+                <strong className="text-ink">{extraIds.length}</strong> of these
+                are on other pages. Anyone already running or finished among them
+                is skipped by the server, and the result will say how many.
+              </p>
+            )}
 
             {/* Why the count on the button may be lower than what you picked.
                 Saying it here beats reporting skips after the fact. */}
@@ -331,8 +353,8 @@ export function EnrollDialog({
             {settings && firstSend && plan.length > 0 && (
               <div className="mt-4 rounded-lg border border-line bg-surface-2/50 px-3 py-3">
                 <p className="text-xs font-medium text-ink">
-                  What happens to {eligible.length} prospect
-                  {eligible.length === 1 ? "" : "s"}
+                  What happens to {submitIds.length} prospect
+                  {submitIds.length === 1 ? "" : "s"}
                 </p>
                 <ol className="mt-2 space-y-1">
                   {plan.map((entry) => (
@@ -371,7 +393,7 @@ export function EnrollDialog({
                 onClick={submit}
                 disabled={
                   pending ||
-                  eligible.length === 0 ||
+                  submitIds.length === 0 ||
                   !sequenceId ||
                   (mode === "send_at" && !sendAt)
                 }
@@ -379,9 +401,9 @@ export function EnrollDialog({
               >
                 <SendIcon />
                 {pending
-                  ? `Writing ${eligible.length}…`
-                  : eligible.length
-                    ? `Enroll ${eligible.length}`
+                  ? `Writing ${submitIds.length}…`
+                  : submitIds.length
+                    ? `Enroll ${submitIds.length}`
                     : "Nothing to enroll"}
               </button>
             </div>
@@ -392,9 +414,9 @@ export function EnrollDialog({
             {pending && mode !== "send_at" && (
               <p className="mt-2 text-center text-xs text-muted">
                 Claude is drafting each one — about{" "}
-                {Math.max(1, Math.round((eligible.length * 5.5) / 60))} minute
-                {Math.round((eligible.length * 5.5) / 60) === 1 ? "" : "s"} for{" "}
-                {eligible.length}. Leave this tab open.
+                {Math.max(1, Math.round((submitIds.length * 5.5) / 60))} minute
+                {Math.round((submitIds.length * 5.5) / 60) === 1 ? "" : "s"} for{" "}
+                {submitIds.length}. Leave this tab open.
               </p>
             )}
           </>

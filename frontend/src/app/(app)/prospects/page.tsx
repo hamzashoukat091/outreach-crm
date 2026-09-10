@@ -8,7 +8,10 @@ import { ApiError } from "@/components/api-error";
 
 export const dynamic = "force-dynamic";
 
-const PAGE_SIZE = 25;
+// 100 rather than 25: a typical sourcing run is 30-50 rows, and paging one of
+// those meant "select all" quietly took only the first page. Larger runs still
+// page, which is what the select-all-matching link in the table is for.
+const PAGE_SIZE = 100;
 
 export default async function ProspectsPage({
   searchParams,
@@ -16,6 +19,7 @@ export default async function ProspectsPage({
   searchParams: Promise<{
     q?: string;
     status?: string;
+    pipeline?: string;
     category?: string;
     completeness?: string;
     view?: string;
@@ -35,6 +39,7 @@ export default async function ProspectsPage({
       api.listProspects({
         q: params.q,
         status: params.status,
+        pipeline_mode: params.pipeline,
         category: params.category,
         completeness: params.completeness,
         archived: archivedView,
@@ -123,6 +128,15 @@ export default async function ProspectsPage({
         prospects={data.items}
         strategies={activeStrategies}
         archivedView={archivedView}
+        total={data.total}
+        filters={{
+          q: params.q,
+          status: params.status,
+          pipeline_mode: params.pipeline,
+          category: params.category,
+          completeness: params.completeness,
+          archived: archivedView,
+        }}
       />
 
       {totalPages > 1 && (

@@ -9,6 +9,7 @@ import {
   generateBulkAction,
 } from "@/app/prospect-actions";
 import { bulkReturnToManualAction } from "@/app/automation-actions";
+import { api } from "@/lib/api";
 import type { Prospect, Strategy } from "@/lib/prospect-types";
 import type { EnrollmentState } from "@/lib/types";
 import { EmptyState, Tag, formatDate } from "@/components/ui";
@@ -22,20 +23,56 @@ export function ProspectsTable({
   prospects,
   strategies,
   archivedView = false,
+  total = 0,
+  filters = {},
 }: {
   prospects: Prospect[];
   strategies: Strategy[];
   archivedView?: boolean;
+  /** How many rows match the filters, not just this page. */
+  total?: number;
+  /** The active filters, so "select all matching" asks for the same set. */
+  filters?: Record<string, string | boolean | undefined>;
 }) {
+  // One set, whether the ids came from this page or from "select all
+  // matching" -- every bulk action then works the same way regardless.
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectingAll, setSelectingAll] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [strategyId, setStrategyId] = useState("");
   const [pending, startTransition] = useTransition();
   const { toast, show } = useToast();
   const router = useRouter();
 
-  const allSelected = prospects.length > 0 && selected.size === prospects.length;
+  // Every visible row ticked. Compared against the page, not the selection,
+  // so it stays true once "select all matching" has pulled in off-page ids.
+  const allSelected =
+    prospects.length > 0 && prospects.every((p) => selected.has(p.id));
+  const moreBeyondPage = total > prospects.length;
+  const selectionExceedsPage = selected.size > prospects.length;
   const defaultStrategy = strategies.find((s) => s.is_default) ?? strategies[0];
+
+  async function selectAllMatching() {
+    setSelectingAll(true);
+    try {
+      const ids = await api.listProspectIds(
+        Object.fromEntries(
+          Object.entries(filters).filter(([, v]) => v !== undefined && v !== ""),
+        ) as Parameters<typeof api.listProspectIds>[0],
+      );
+      setSelected(new Set(ids));
+      if (ids.length < total) {
+        show({
+          ok: true,
+          message: `Selected ${ids.length} of ${total} — that is the per-request cap.`,
+        });
+      }
+    } catch {
+      show({ ok: false, message: "Couldn't select them all. Try again." });
+    } finally {
+      setSelectingAll(false);
+    }
+  }
 
   // How many of the selected rows the automation side currently owns. Decides
   // which direction the pipeline button offers.
@@ -88,6 +125,10 @@ export function ProspectsTable({
 
   // Enrolling is what people actually came for, and it sets pipeline_mode to
   // "automated" itself -- so there is no separate handoff step to take first.
+  //
+  // Only the rows on this page carry enrollment state. A selection made with
+  // "select all matching" reaches beyond them, so the ids are passed too and
+  // the dialog reports the difference rather than pretending it knows.
   const selectedProspects = prospects.filter((p) => selected.has(p.id));
 
   function returnToManual() {
@@ -152,8 +193,28 @@ export function ProspectsTable({
           animate-fade-up">
           <span className="tabular text-sm font-medium text-ink">
             {selected.size} selected
-            {allSelected && prospects.length > 0 ? " on this page" : ""}
+            {allSelected && !selectionExceedsPage && moreBeyondPage
+              ? " on this page"
+              : ""}
           </span>
+
+          {/* Selecting every visible row on a 46-row category used to take
+              only the first page, silently -- you enrolled 25 and had no way
+              to see the other 21 were left behind. */}
+          {allSelected && moreBeyondPage && !selectionExceedsPage && (
+            <button
+              onClick={selectAllMatching}
+              disabled={selectingAll || pending}
+              className="text-sm font-medium text-accent underline underline-offset-2 hover:no-underline disabled:opacity-60"
+            >
+              {selectingAll ? "Selecting…" : `Select all ${total} matching`}
+            </button>
+          )}
+          {selectionExceedsPage && (
+            <span className="text-xs text-muted">
+              across every page of this filter
+            </span>
+          )}
 
           <select
             value={strategyId}
@@ -406,6 +467,9 @@ export function ProspectsTable({
       {enrolling && (
         <EnrollDialog
           prospects={selectedProspects}
+          extraIds={[...selected].filter(
+            (id) => !prospects.some((p) => p.id === id),
+          )}
           onClose={() => setEnrolling(false)}
           onDone={(result) => {
             show(result);

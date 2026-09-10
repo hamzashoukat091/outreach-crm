@@ -133,6 +133,7 @@ export const api = {
       q?: string;
       status?: string;
       industry?: string;
+      pipeline_mode?: string;
       category?: string;
       completeness?: string;
       has_draft?: boolean;
@@ -147,6 +148,27 @@ export const api = {
     });
     const suffix = qs.toString() ? `?${qs}` : "";
     return request<ProspectList>(`/api/prospects${suffix}`);
+  },
+
+  /** Every id matching the filters, for "select all N matching". */
+  listProspectIds: (
+    params: {
+      q?: string;
+      status?: string;
+      industry?: string;
+      pipeline_mode?: string;
+      category?: string;
+      completeness?: string;
+      has_draft?: boolean;
+      archived?: boolean;
+    } = {},
+  ) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== "") qs.set(k, String(v));
+    });
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<string[]>(`/api/prospects/ids${suffix}`);
   },
 
   listProspectCategories: () =>

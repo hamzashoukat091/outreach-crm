@@ -100,6 +100,19 @@ export function ProspectToolbar({
           ))}
         </select>
 
+        {/* "Which of these have I not enrolled yet" is the question that costs
+            you a mis-send when it cannot be asked. Manual = never handed to
+            the engine; enrolling is what flips it. */}
+        <select
+          defaultValue={params.get("pipeline") ?? ""}
+          onChange={(e) => setParam("pipeline", e.target.value)}
+          className="input min-h-11 w-full min-w-0 text-sm sm:h-9 sm:w-auto sm:py-0"
+        >
+          <option value="">Manual &amp; automated</option>
+          <option value="manual">Manual only</option>
+          <option value="automated">Automated only</option>
+        </select>
+
         {categories.length > 0 && (
           <select
             defaultValue={params.get("category") ?? ""}
