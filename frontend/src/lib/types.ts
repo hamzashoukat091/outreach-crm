@@ -268,6 +268,14 @@ export interface AutomationStatus {
   window_open: boolean;
   /** Null while the window is open; otherwise when sending resumes. */
   window_opens_at: string | null;
+  /** Null while the window is shut; the mirror of window_opens_at. */
+  window_closes_at: string | null;
+  /** Server time, for anchoring countdowns to the clock that decides them. */
+  now: string | null;
+  /** Which gate holds sends: "paused" | "window" | "hourly" | "daily" | "none". */
+  blocked_by: string;
+  /** When that gate clears. Rolling limits, so not a calendar reset. */
+  unblocks_at: string | null;
   send_timezone: string;
   sends_this_hour: number;
   hourly_send_limit: number;

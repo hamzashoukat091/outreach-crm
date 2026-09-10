@@ -166,6 +166,23 @@ export function formatInZone(date: Date, timeZone: string): string {
  *  The full formatInZone string is right for a schedule preview and too long
  *  for a sidebar line, where the day is usually redundant -- a window that
  *  reopens in two hours does not need a date attached. */
+/** "in 42m", "in 3h 05m", "in 2d". Coarse on purpose above an hour: a
+ *  seconds-accurate countdown implies a precision the 15s worker tick and the
+ *  rate limiter do not have. */
+export function untilText(target: Date, from = new Date()): string {
+  const ms = target.getTime() - from.getTime();
+  if (ms <= 0) return "now";
+  const mins = Math.round(ms / 60_000);
+  if (mins < 60) return `in ${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) {
+    const rest = mins % 60;
+    return rest ? `in ${hours}h ${String(rest).padStart(2, "0")}m` : `in ${hours}h`;
+  }
+  const days = Math.round(hours / 24);
+  return `in ${days}d`;
+}
+
 export function shortTimeInZone(date: Date, timeZone: string, from = new Date()): string {
   const time = new Intl.DateTimeFormat("en-GB", {
     hour: "numeric",

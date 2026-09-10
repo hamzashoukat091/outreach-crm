@@ -387,6 +387,24 @@ class AutomationStatus(BaseModel):
     # Null while the window is open. Lets the UI say when sending resumes
     # instead of only that it has stopped.
     window_opens_at: datetime | None = None
+    # The mirror: null while it is shut. Between the two, the sidebar can
+    # always say what happens next and when, rather than only which state it
+    # is in right now.
+    window_closes_at: datetime | None = None
+    # Server time in the operator's own zone. Sent rather than read from the
+    # browser clock, which is a different machine in a possibly different
+    # timezone -- the window is evaluated server-side, so the countdown has to
+    # be measured against the same clock that decides it.
+    now: datetime | None = None
+    # Which of the four gates is actually holding sends right now: "paused",
+    # "window", "hourly", "daily", or "none". The window being open says
+    # nothing on its own -- with a 10/day cap and 16 slots of window capacity
+    # the daily limit binds first and the window is open the whole time it
+    # does. Naming the real blocker is the only way that reads correctly.
+    blocked_by: str = "none"
+    # When that blocker clears. Rolling limits, so this is when the oldest
+    # send ages out, not a calendar reset.
+    unblocks_at: datetime | None = None
     send_timezone: str = "UTC"
     sends_this_hour: int
     hourly_send_limit: int

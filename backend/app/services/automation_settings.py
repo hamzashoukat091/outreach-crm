@@ -100,12 +100,78 @@ def next_window_open(settings_row: AutomationSettings, from_dt: datetime) -> dat
     return from_dt  # unreachable with a sane 1-7 send_days list
 
 
+def window_closes_at(
+    settings_row: AutomationSettings, from_dt: datetime
+) -> datetime | None:
+    """When the currently-open window shuts, as UTC. None if it is not open.
+
+    The counterpart to next_window_open, and the same day-scan shape so an
+    overnight window (20:00-04:00) closes tomorrow morning rather than
+    yesterday's.
+    """
+    from_dt = _as_utc(from_dt)
+    if not within_send_window(settings_row, from_dt):
+        return None
+
+    tz = _tz(settings_row)
+    local = from_dt.astimezone(tz)
+    start, end = settings_row.send_window_start, settings_row.send_window_end
+
+    if start <= end:
+        # Same-day window: it ends today, at `end`.
+        close = datetime.combine(local.date(), end, tzinfo=tz)
+    else:
+        # Overnight. Before `end` means we are in the tail of yesterday's
+        # window and it closes today; otherwise it runs past midnight and
+        # closes tomorrow.
+        day = local.date() if local.time() < end else local.date() + timedelta(days=1)
+        close = datetime.combine(day, end, tzinfo=tz)
+
+    return close.astimezone(timezone.utc)
+
+
 def sends_in_last_hour(db: Session, now_utc: datetime | None = None) -> int:
     return _sent_since(db, (now_utc or datetime.now(timezone.utc)) - timedelta(hours=1))
 
 
 def sends_in_last_day(db: Session, now_utc: datetime | None = None) -> int:
     return _sent_since(db, (now_utc or datetime.now(timezone.utc)) - timedelta(days=1))
+
+
+def limit_frees_at(
+    db: Session, span: timedelta, limit: int, now_utc: datetime | None = None
+) -> datetime | None:
+    """When a rolling limit next has room, or None if it already does.
+
+    These limits are rolling windows, not calendar buckets: at 10/day you do
+    not wait for midnight, you wait for the oldest of those 10 sends to age
+    past 24h, and then you get exactly one slot. Reporting "resets at
+    midnight" would be wrong by up to a full day in either direction.
+
+    The answer is therefore the moment the limit-th most recent send ages out.
+    """
+    now = now_utc or datetime.now(timezone.utc)
+    if limit <= 0:
+        return None
+    since = now - span
+    # The oldest send still inside the window, counting back `limit` from the
+    # newest: once that one falls out, the count drops below the limit.
+    rows = db.scalars(
+        select(Message.sent_at)
+        .where(
+            Message.direction == MessageDirection.outbound,
+            Message.state == MessageState.sent,
+            Message.sent_at >= since,
+        )
+        .order_by(Message.sent_at.desc())
+        .limit(limit)
+    ).all()
+    if len(rows) < limit:
+        return None  # room already
+    oldest = rows[-1]
+    if oldest.tzinfo is None:
+        oldest = oldest.replace(tzinfo=timezone.utc)
+    return oldest + span
 
 
 def _sent_since(db: Session, since: datetime) -> int:

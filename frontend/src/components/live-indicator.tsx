@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { AutomationStatus } from "@/lib/types";
-import { shortTimeInZone } from "@/lib/schedule-preview";
+import { shortTimeInZone, untilText } from "@/lib/schedule-preview";
 
 /** Persistent "is this thing armed?" readout, pinned in the sidebar.
  *
@@ -21,7 +21,19 @@ export function LiveIndicator({ compact = false }: { compact?: boolean } = {}) {
   const pathname = usePathname();
   const [status, setStatus] = useState<AutomationStatus | null>(null);
   const [failed, setFailed] = useState(false);
+  // The countdown has to move between polls, so it re-renders on its own
+  // clock. `fetchedAt` anchors the server's clock to the browser's at the
+  // moment the status arrived.
+  const [tick, setTick] = useState(() => Date.now());
+  const [fetchedAt, setFetchedAt] = useState(() => Date.now());
   const drafting = (status?.drafting ?? 0) > 0;
+
+  useEffect(() => {
+    // 30s: the display rounds to whole minutes, so anything finer redraws
+    // without changing a character.
+    const timer = setInterval(() => setTick(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,6 +43,8 @@ export function LiveIndicator({ compact = false }: { compact?: boolean } = {}) {
         .then((d) => {
           if (cancelled) return;
           setStatus(d);
+          setFetchedAt(Date.now());
+          setTick(Date.now());
           setFailed(false);
         })
         .catch(() => !cancelled && setFailed(true));
@@ -55,10 +69,6 @@ export function LiveIndicator({ compact = false }: { compact?: boolean } = {}) {
   // question "is the window open" is moot -- nothing is going out either way,
   // and saying so twice buries the reason that actually matters.
   const windowShut = live && !status.window_open;
-  const opensAt =
-    windowShut && status.window_opens_at
-      ? shortTimeInZone(new Date(status.window_opens_at), status.send_timezone)
-      : null;
 
   const tone = live
     ? "border-send/30 bg-send-soft text-send-ink"
@@ -67,15 +77,51 @@ export function LiveIndicator({ compact = false }: { compact?: boolean } = {}) {
       : "border-amber-500/25 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300";
 
   const label = live ? "Live" : paused ? "Paused" : "Dry run";
-  const detail = live
-    ? windowShut
-      ? opensAt
-        ? `Window closed · opens ${opensAt}`
-        : "Window closed"
-      : "Window open · emails reach real people"
-    : paused
-      ? "Sending is stopped"
-      : "Nothing is delivered";
+
+  /* What is actually holding sends, and when it clears.
+   *
+   * "Window open" alone was true and useless: with a 10/day cap and an 8-hour
+   * window at 2/hour there are 16 slots of window capacity against 10 of
+   * daily, so the daily limit binds first and the window stays open the whole
+   * time it does. The blocker has to be named, not inferred from the window.
+   *
+   * Times come from the server: it evaluates the window and the limits, and
+   * the browser is a different machine in a possibly different timezone. The
+   * offset between the two clocks is measured once per poll and applied to
+   * the tick, so the countdown counts down the server's clock. */
+  const serverNow = status.now ? new Date(status.now) : null;
+  const skew = serverNow ? serverNow.getTime() - fetchedAt : 0;
+  const nowOnServer = new Date(tick + skew);
+
+  const at = (iso: string | null | undefined) => (iso ? new Date(iso) : null);
+  const unblocksAt = at(status.unblocks_at);
+  const closesAt = at(status.window_closes_at);
+  const opensAt = at(status.window_opens_at);
+
+  const when = (d: Date) =>
+    `${shortTimeInZone(d, status.send_timezone, nowOnServer)} · ${untilText(d, nowOnServer)}`;
+
+  let detail: string;
+  if (!live) {
+    detail = paused ? "Sending is stopped" : "Nothing is delivered";
+  } else if (status.blocked_by === "daily") {
+    detail = unblocksAt
+      ? `Daily limit reached · next slot ${when(unblocksAt)}`
+      : `Daily limit reached (${status.sends_today}/${status.daily_send_limit})`;
+  } else if (status.blocked_by === "hourly") {
+    detail = unblocksAt
+      ? `Hourly limit reached · next slot ${when(unblocksAt)}`
+      : `Hourly limit reached (${status.sends_this_hour}/${status.hourly_send_limit})`;
+  } else if (windowShut) {
+    detail = opensAt ? `Window closed · opens ${when(opensAt)}` : "Window closed";
+  } else {
+    // Nothing blocking. Say the capacity that remains and when it runs out,
+    // because that is the next thing that will stop a send.
+    const left = Math.max(0, status.daily_send_limit - status.sends_today);
+    detail = closesAt
+      ? `Sending · ${left} left today · window shuts ${when(closesAt)}`
+      : `Sending · ${left} left today`;
+  }
 
   // Mobile: a dot and one word on the brand row. The full card would cost a
   // whole block of vertical space on a screen that has none to spare, but

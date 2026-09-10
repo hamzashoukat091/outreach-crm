@@ -32,9 +32,11 @@ from app.schemas.automation import (
 )
 from app.services.automation_settings import (
     get_settings_row,
+    limit_frees_at,
     next_window_open,
     sends_in_last_day,
     sends_in_last_hour,
+    window_closes_at,
     within_send_window,
 )
 from app.services.replier import get_or_create_facts
@@ -320,6 +322,27 @@ def automation_status(db: Session = Depends(get_db)):
 
     window_open = within_send_window(row, now)
 
+    # Which gate is actually holding sends, in the order the worker applies
+    # them (worker/run.py send_due_messages). Order matters: with the hourly
+    # limit reached inside an open window, "hourly" is the honest answer, and
+    # reporting the window would send you to the wrong setting.
+    hourly_used = sends_in_last_hour(db, now)
+    daily_used = sends_in_last_day(db, now)
+    if row.sending_paused:
+        blocked_by, unblocks_at = "paused", None
+    elif not window_open:
+        blocked_by, unblocks_at = "window", next_window_open(row, now)
+    elif daily_used >= row.daily_send_limit:
+        # Daily before hourly: it is the longer wait, so it is the one that
+        # decides when anything actually moves.
+        blocked_by = "daily"
+        unblocks_at = limit_frees_at(db, timedelta(days=1), row.daily_send_limit, now)
+    elif hourly_used >= row.hourly_send_limit:
+        blocked_by = "hourly"
+        unblocks_at = limit_frees_at(db, timedelta(hours=1), row.hourly_send_limit, now)
+    else:
+        blocked_by, unblocks_at = "none", None
+
     return AutomationStatus(
         dry_run=row.dry_run,
         sending_paused=row.sending_paused,
@@ -327,10 +350,14 @@ def automation_status(db: Session = Depends(get_db)):
         # Only when shut: "opens at" while it is already open is noise, and
         # the value would be tomorrow's opening rather than anything useful.
         window_opens_at=None if window_open else next_window_open(row, now),
+        window_closes_at=window_closes_at(row, now) if window_open else None,
+        now=now,
+        blocked_by=blocked_by,
+        unblocks_at=unblocks_at,
         send_timezone=row.timezone,
-        sends_this_hour=sends_in_last_hour(db, now),
+        sends_this_hour=hourly_used,
         hourly_send_limit=row.hourly_send_limit,
-        sends_today=sends_in_last_day(db, now),
+        sends_today=daily_used,
         daily_send_limit=row.daily_send_limit,
         next_scheduled_at=next_scheduled,
         worker_heartbeat_at=heartbeat,
