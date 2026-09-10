@@ -98,11 +98,14 @@ export function AutomationConversation({
   const hasSent = messages.some(
     (m) => m.direction === "outbound" && m.state === "sent",
   );
-  const ordered = [...messages].sort((a, b) => {
-    const ta = a.sent_at ?? a.received_at ?? a.created_at;
-    const tb = b.sent_at ?? b.received_at ?? b.created_at;
-    return ta < tb ? -1 : 1;
-  });
+  // Sort on the date each row actually displays. The old version fell back to
+  // created_at, which for a queued follow-up is when it was booked -- the day
+  // the previous step sent -- while the row shows scheduled_for, days later.
+  // A message booked Sep 4 for Sep 14 therefore sorted before a Sep 7 send
+  // and displayed after it: the list read 4th, 14th, 7th.
+  const when = (m: AutomationMessage) =>
+    m.sent_at ?? m.received_at ?? m.scheduled_for ?? m.created_at;
+  const ordered = [...messages].sort((a, b) => (when(a) < when(b) ? -1 : 1));
 
   return (
     <section className="card p-5">
