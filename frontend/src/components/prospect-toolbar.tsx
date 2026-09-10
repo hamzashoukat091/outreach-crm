@@ -99,21 +99,33 @@ export function ProspectToolbar({
             "Replied" is close to a contradiction anyway. */}
         <select
           value={
-            params.get("pipeline")
-              ? `pipeline:${params.get("pipeline")}`
-              : (params.get("status") ?? "")
+            params.get("sent")
+              ? `sent:${params.get("sent")}`
+              : params.get("pipeline")
+                ? `pipeline:${params.get("pipeline")}`
+                : (params.get("status") ?? "")
           }
           onChange={(e) => {
             const value = e.target.value;
             const next = new URLSearchParams(params.toString());
             next.delete("page");
+            next.delete("pipeline");
+            next.delete("status");
+            next.delete("sent");
             if (value.startsWith("pipeline:")) {
               next.set("pipeline", value.slice("pipeline:".length));
-              next.delete("status");
-            } else {
-              next.delete("pipeline");
-              if (value) next.set("status", value);
-              else next.delete("status");
+            } else if (value.startsWith("sent:")) {
+              next.set("sent", value.slice("sent:".length));
+              // Newest send first: a "sent this hour" list is read in the
+              // order it happened, and the default ordering buries that.
+              next.set("sort", "sent");
+              next.set("direction", "desc");
+            } else if (value) {
+              next.set("status", value);
+            }
+            if (!value.startsWith("sent:") && params.get("sort") === "sent") {
+              next.delete("sort");
+              next.delete("direction");
             }
             router.push(`/prospects?${next.toString()}`);
           }}
@@ -134,6 +146,14 @@ export function ProspectToolbar({
           <optgroup label="Pipeline">
             <option value="pipeline:manual">Manual only</option>
             <option value="pipeline:automated">Automated only</option>
+          </optgroup>
+          {/* The people behind the rate-limit counters. Same rolling window
+              the limiter uses, so this list is exactly the N in "N/10 today"
+              -- a calendar-hour version would show a different set than the
+              number it is meant to explain. */}
+          <optgroup label="Recently mailed">
+            <option value="sent:hour">Mailed in the last hour</option>
+            <option value="sent:day">Mailed in the last 24 hours</option>
           </optgroup>
         </select>
 

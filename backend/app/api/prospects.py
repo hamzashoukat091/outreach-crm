@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
@@ -12,6 +12,7 @@ from app.models import (
     EmailDraft,
     EnrollmentState,
     Message,
+    MessageDirection,
     MessageState,
     Prospect,
     ProspectEvent,
@@ -228,6 +229,11 @@ class ProspectFilters:
         archived: bool = Query(
             False, description="Show archived prospects instead of active ones"
         ),
+        sent_within: str | None = Query(
+            None,
+            pattern="^(hour|day)$",
+            description="Prospects mailed in the last rolling hour or 24 hours",
+        ),
     ):
         self.q = q
         self.status = prospect_status
@@ -237,6 +243,7 @@ class ProspectFilters:
         self.completeness = completeness
         self.has_draft = has_draft
         self.archived = archived
+        self.sent_within = sent_within
 
 
 def _filtered(stmt, f: ProspectFilters):
@@ -285,6 +292,24 @@ def _filtered(stmt, f: ProspectFilters):
             Prospect.completeness_ack_at.is_(None),
         )
 
+    if f.sent_within:
+        # The same rolling window and the same definition of "sent" the rate
+        # limiter uses (services/automation_settings._sent_since), so this list
+        # is exactly the prospects behind the N/limit counter. A calendar-hour
+        # version would show a different set than the number it explains.
+        span = timedelta(hours=1) if f.sent_within == "hour" else timedelta(days=1)
+        since = datetime.now(timezone.utc) - span
+        mailed = (
+            select(Message.prospect_id)
+            .where(
+                Message.direction == MessageDirection.outbound,
+                Message.state == MessageState.sent,
+                Message.sent_at >= since,
+            )
+            .distinct()
+        )
+        stmt = stmt.where(Prospect.id.in_(mailed))
+
     if f.has_draft is not None:
         live_drafts = (
             select(EmailDraft.prospect_id)
@@ -306,6 +331,18 @@ SORT_COLUMNS = {
     "status": (Prospect.status,),
     "pipeline": (Prospect.pipeline_mode,),
     "created": (Prospect.created_at,),
+    # Most recent outbound send, for reading a "sent this hour" list in the
+    # order it actually happened.
+    "sent": (
+        select(func.max(Message.sent_at))
+        .where(
+            Message.prospect_id == Prospect.id,
+            Message.direction == MessageDirection.outbound,
+            Message.state == MessageState.sent,
+        )
+        .correlate(Prospect)
+        .scalar_subquery(),
+    ),
 }
 
 # The default: complete records first, newest first within that. Sorting by a

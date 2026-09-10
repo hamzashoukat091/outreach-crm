@@ -272,13 +272,25 @@ export default async function DashboardPage() {
               <div>
                 <dt className="text-xs text-muted">This hour</dt>
                 <dd className="mt-0.5 tabular-nums text-ink">
-                  {status.sends_this_hour}/{status.hourly_send_limit}
+                  {/* The number is the interesting part; who it was is the
+                      question it raises. Same rolling window on both ends. */}
+                  <Link
+                    href="/prospects?sent=hour&sort=sent&direction=desc"
+                    className="hover:text-accent hover:underline"
+                  >
+                    {status.sends_this_hour}/{status.hourly_send_limit}
+                  </Link>
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted">Today</dt>
                 <dd className="mt-0.5 tabular-nums text-ink">
-                  {status.sends_today}/{status.daily_send_limit}
+                  <Link
+                    href="/prospects?sent=day&sort=sent&direction=desc"
+                    className="hover:text-accent hover:underline"
+                  >
+                    {status.sends_today}/{status.daily_send_limit}
+                  </Link>
                 </dd>
               </div>
             </dl>

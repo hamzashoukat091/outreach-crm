@@ -23,6 +23,7 @@ export default async function ProspectsPage({
     pipeline?: string;
     category?: string;
     completeness?: string;
+    sent?: string;
     sort?: string;
     direction?: string;
     per?: string;
@@ -50,6 +51,7 @@ export default async function ProspectsPage({
         pipeline_mode: params.pipeline,
         category: params.category,
         completeness: params.completeness,
+        sent_within: params.sent,
         sort: params.sort,
         direction: params.direction,
         archived: archivedView,
@@ -145,6 +147,7 @@ export default async function ProspectsPage({
           pipeline_mode: params.pipeline,
           category: params.category,
           completeness: params.completeness,
+          sent_within: params.sent,
           sort: params.sort,
           direction: params.direction,
           archived: archivedView,

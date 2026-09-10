@@ -136,6 +136,7 @@ export const api = {
       pipeline_mode?: string;
       category?: string;
       completeness?: string;
+      sent_within?: string;
       has_draft?: boolean;
       archived?: boolean;
       sort?: string;
@@ -161,6 +162,7 @@ export const api = {
       pipeline_mode?: string;
       category?: string;
       completeness?: string;
+      sent_within?: string;
       has_draft?: boolean;
       archived?: boolean;
       sort?: string;
