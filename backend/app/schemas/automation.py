@@ -395,6 +395,12 @@ class AutomationStatus(BaseModel):
     next_scheduled_at: datetime | None = None
     worker_heartbeat_at: datetime | None = None
     worker_alive: bool = False
+    # Drafting progress, so a big enrollment can report itself in the sidebar
+    # instead of blocking the request that created it. `drafting_total` is the
+    # denominator for the current burst: messages still being written plus the
+    # ones already written but not yet sent.
+    drafting: int = 0
+    drafting_total: int = 0
 
 
 # ---------- Handoff ----------

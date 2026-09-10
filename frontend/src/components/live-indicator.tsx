@@ -21,6 +21,7 @@ export function LiveIndicator({ compact = false }: { compact?: boolean } = {}) {
   const pathname = usePathname();
   const [status, setStatus] = useState<AutomationStatus | null>(null);
   const [failed, setFailed] = useState(false);
+  const drafting = (status?.drafting ?? 0) > 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -34,12 +35,14 @@ export function LiveIndicator({ compact = false }: { compact?: boolean } = {}) {
         })
         .catch(() => !cancelled && setFailed(true));
     load();
-    const timer = setInterval(load, 30_000);
+    // Faster while a batch is being written: at 30s a bar that finishes in a
+    // minute would show two frames, which is indistinguishable from stuck.
+    const timer = setInterval(load, drafting ? 3_000 : 30_000);
     return () => {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [pathname]);
+  }, [pathname, drafting]);
 
   // Say nothing rather than guess: claiming "dry run" while live would be the
   // worst possible failure mode for this component.
@@ -99,8 +102,43 @@ export function LiveIndicator({ compact = false }: { compact?: boolean } = {}) {
     );
   }
 
+  const total = status.drafting_total || 0;
+  const written = Math.max(0, total - (status.drafting ?? 0));
+
   return (
     <div className="px-3 pb-4 lg:px-5">
+      {/* Enrolling returns immediately and the worker writes the emails, so
+          this is the only place that says the work is happening. Shown only
+          while it is: a permanent 0-of-0 bar would be furniture. */}
+      {drafting && total > 0 && (
+        <div className="mb-2 rounded-lg border border-line bg-surface-2 px-3 py-2.5">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[11px] font-semibold leading-tight text-ink">
+              Writing emails
+            </span>
+            <span className="tabular text-[11px] leading-tight text-muted">
+              {written}/{total}
+            </span>
+          </div>
+          <div
+            className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-line"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={written}
+            aria-label={`Writing emails: ${written} of ${total} done`}
+          >
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-700 ease-out"
+              style={{ width: `${Math.round((written / total) * 100)}%` }}
+            />
+          </div>
+          <p className="mt-1 text-[11px] leading-tight text-muted">
+            Claude is drafting. You can leave this page.
+          </p>
+        </div>
+      )}
+
       <Link
         href="/settings"
         title={`${label} — ${detail}. Open settings to change this.`}

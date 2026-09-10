@@ -374,26 +374,6 @@ export function EnrollDialog({
               </div>
             )}
 
-            {/* "Write now" drafts every email inside the request, at roughly
-                5.5s each. Past ~90 the request outlives the 600s proxy
-                timeout and the tab shows a failure for enrollments that were
-                in fact created -- so say so before it is pressed, not after.
-                'send_at' skips the drafting and is unaffected. */}
-            {mode !== "send_at" && submitIds.length > 60 && (
-              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                {submitIds.length} at once takes about{" "}
-                {Math.round((submitIds.length * 5.5) / 60)} minutes, since each
-                email is written before this returns.
-                {submitIds.length > 90 && (
-                  <strong className="block">
-                    That may exceed the server timeout. Enroll in batches of 60
-                    or fewer, or pick &ldquo;Send at a time I pick&rdquo;, which
-                    drafts later.
-                  </strong>
-                )}
-              </p>
-            )}
-
             {settings?.dry_run && (
               <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                 Dry run is on — these will be written and scheduled, but nothing is
@@ -421,22 +401,21 @@ export function EnrollDialog({
               >
                 <SendIcon />
                 {pending
-                  ? `Writing ${submitIds.length}…`
+                  ? `Enrolling ${submitIds.length}…`
                   : submitIds.length
                     ? `Enroll ${submitIds.length}`
                     : "Nothing to enroll"}
               </button>
             </div>
 
-            {/* A silent multi-minute button is indistinguishable from a hung
-                one. "write now" drafts every email with Claude before it
-                returns, so say so, and say roughly how long. */}
-            {pending && mode !== "send_at" && (
+            {/* Enrolling now returns as soon as the rows are written; the
+                worker does the drafting. Point at where the progress shows,
+                since a dialog that closes instantly otherwise looks like
+                nothing happened. */}
+            {mode !== "send_at" && submitIds.length > 5 && (
               <p className="mt-2 text-center text-xs text-muted">
-                Claude is drafting each one — about{" "}
-                {Math.max(1, Math.round((submitIds.length * 5.5) / 60))} minute
-                {Math.round((submitIds.length * 5.5) / 60) === 1 ? "" : "s"} for{" "}
-                {submitIds.length}. Leave this tab open.
+                Claude writes these in the background — progress shows in the
+                sidebar. You can close this and keep working.
               </p>
             )}
           </>

@@ -291,6 +291,28 @@ def automation_status(db: Session = Depends(get_db)):
         )
     )
 
+    # Drafting progress for the sidebar. Only messages inside the worker's own
+    # drafting horizon count: a step 3 queued for next week is not part of what
+    # is being written now, and including it would leave the bar permanently
+    # short of full.
+    horizon = now + timedelta(hours=24)
+    drafting = db.scalar(
+        select(func.count(Message.id)).where(
+            Message.state == MessageState.drafting,
+            Message.direction == MessageDirection.outbound,
+            Message.scheduled_for <= horizon,
+        )
+    ) or 0
+    # Denominator: still-drafting plus already-written-not-yet-sent, which is
+    # what "N of M written" means while a burst is in flight.
+    drafted_waiting = db.scalar(
+        select(func.count(Message.id)).where(
+            Message.state == MessageState.scheduled,
+            Message.direction == MessageDirection.outbound,
+            Message.scheduled_for <= horizon,
+        )
+    ) or 0
+
     heartbeat = row.worker_heartbeat_at
     # Missing two full ticks (plus slack) means the worker is down or wedged.
     alive_horizon = timedelta(seconds=max(60, env_settings.worker_interval_seconds * 4))
@@ -313,4 +335,6 @@ def automation_status(db: Session = Depends(get_db)):
         next_scheduled_at=next_scheduled,
         worker_heartbeat_at=heartbeat,
         worker_alive=worker_alive,
+        drafting=drafting,
+        drafting_total=drafting + drafted_waiting,
     )

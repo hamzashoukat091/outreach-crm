@@ -276,6 +276,9 @@ export interface AutomationStatus {
   next_scheduled_at: string | null;
   worker_heartbeat_at: string | null;
   worker_alive: boolean;
+  /** Messages still being written by the worker, and the size of the burst. */
+  drafting: number;
+  drafting_total: number;
 }
 
 /** A ready-made sequence shape, resolved before anything is created. */

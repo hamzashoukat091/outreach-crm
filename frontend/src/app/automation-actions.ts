@@ -244,7 +244,12 @@ export async function enrollProspectsAction(
         message: `Enrolled ${res.enrolled} of ${res.enrolled + res.skipped}, ${res.skipped} skipped.${reason}`,
       };
     }
-    return { ok: true, message: `Enrolled ${res.enrolled} prospect(s).` };
+    return {
+      ok: true,
+      message:
+        `Enrolled ${res.enrolled} prospect(s). ` +
+        `Claude is writing the emails — watch the sidebar.`,
+    };
   } catch (error) {
     return fail(error);
   }

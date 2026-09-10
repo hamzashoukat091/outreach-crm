@@ -183,27 +183,17 @@ def enroll(
     )
     db.flush()
 
-    # 'draft_now_send_later' promises the copy exists before it goes, and the
-    # UI sells it as "you can read it before it goes". The worker only drafts
-    # inside its 24h horizon, so a send further out than that would have left
-    # nothing to read for hours. Write it here instead.
+    # Drafting is left to the worker, which already writes anything queued
+    # inside its 24h horizon, retries failures and batches the Claude calls.
     #
-    # Failure is not fatal: the row stays in 'drafting' and the worker retries
-    # when the horizon opens, which is exactly the pre-existing behaviour.
-    if mode != "send_at":
-        try:
-            with db.begin_nested():
-                draft_message(db, message)
-        except Exception:
-            # Savepoint-scoped, so the enrollment itself survives. The message
-            # stays in 'drafting' and the worker picks it up on its horizon --
-            # a Claude outage must never block enrolling.
-            logger.warning(
-                "immediate draft failed for message %s; worker will retry",
-                message.id,
-                exc_info=True,
-            )
-
+    # It used to happen here, inline: enrolling 40 people meant 40 sequential
+    # Claude calls inside one HTTP request -- minutes of a spinner, a tab that
+    # had to stay open, and past roughly 90 a proxy timeout that reported
+    # failure for enrollments which had in fact been created. The message rows
+    # are committed in 'drafting' and the sidebar reports progress instead.
+    #
+    # The copy still exists before it sends: the first step is scheduled at
+    # least a tick away, and the worker drafts far in advance of the send.
     return enrollment
 
 
