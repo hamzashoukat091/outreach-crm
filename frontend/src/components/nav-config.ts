@@ -13,6 +13,10 @@ export const NAV_LINKS = [
   // typing the URL, which meant held emails could sit unseen indefinitely.
   { href: "/approvals", label: "Approvals", icon: "approvals", badge: "approvals" as const },
   { href: "/strategies", label: "Strategies", icon: "strategies" },
+  // The step before Prospects: a sourcing run produces the CSV that gets
+  // imported, so the prompts belong in the app rather than in a file on one
+  // machine.
+  { href: "/prompts", label: "Prompts", icon: "prompts" },
   { href: "/analytics", label: "Analytics", icon: "analytics" },
   { href: "/settings", label: "Settings", icon: "settings" },
 ];

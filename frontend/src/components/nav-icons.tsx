@@ -69,6 +69,14 @@ export const NAV_ICONS: Record<string, () => React.ReactElement> = {
       <path d="M4.5 6.5L2.5 12a2.6 2.6 0 004 0zM15.5 6.5L13.5 12a2.6 2.6 0 004 0z" />
     </Svg>
   ),
+  // A document with lines and a copy corner: these are blocks of text you take
+  // away, not something you edit in place.
+  prompts: () => (
+    <Svg>
+      <path d="M12.5 2.5h-7a2 2 0 00-2 2v11a2 2 0 002 2h7a2 2 0 002-2v-8z" />
+      <path d="M12.5 2.5v4h4M6.5 9.5h5M6.5 12.5h5" />
+    </Svg>
+  ),
   analytics: () => (
     <Svg>
       <path d="M3 16.5V9M7.6 16.5V4.5M12.3 16.5v-5M17 16.5V7.5" />
