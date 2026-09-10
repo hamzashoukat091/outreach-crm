@@ -138,6 +138,8 @@ export const api = {
       completeness?: string;
       has_draft?: boolean;
       archived?: boolean;
+      sort?: string;
+      direction?: string;
       page?: number;
       page_size?: number;
     } = {},
@@ -161,6 +163,8 @@ export const api = {
       completeness?: string;
       has_draft?: boolean;
       archived?: boolean;
+      sort?: string;
+      direction?: string;
     } = {},
   ) => {
     const qs = new URLSearchParams();

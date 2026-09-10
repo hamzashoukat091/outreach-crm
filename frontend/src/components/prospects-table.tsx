@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   bulkArchiveAction,
@@ -19,12 +19,72 @@ import { ProspectStatusBadge } from "@/components/prospect-ui";
 import { Toast, useToast } from "@/components/toast";
 import { SendIcon } from "@/components/send-icon";
 
+/**
+ * A clickable column label. Sorting is server-side and lives in the URL: the
+ * table only ever holds one page, so reordering the rows in the browser would
+ * sort a slice and present it as the whole -- the first row after a click
+ * would not be the real first row.
+ *
+ * First click sorts ascending, clicking the active column flips it, and a
+ * third click clears back to the default order.
+ */
+function SortHeader({
+  column,
+  label,
+  sort,
+  direction,
+  onSort,
+  className = "",
+}: {
+  column: string;
+  label: string;
+  sort?: string;
+  direction: string;
+  onSort: (column: string) => void;
+  className?: string;
+}) {
+  const active = sort === column;
+  return (
+    <th className={`px-4 py-3 font-medium ${className}`} aria-sort={
+      active ? (direction === "desc" ? "descending" : "ascending") : "none"
+    }>
+      <button
+        onClick={() => onSort(column)}
+        className={`group inline-flex items-center gap-1 uppercase tracking-[0.07em] transition-colors hover:text-ink ${
+          active ? "text-ink" : ""
+        }`}
+        title={
+          active && direction === "asc"
+            ? `Sort by ${label} descending`
+            : active
+              ? `Clear ${label} sorting`
+              : `Sort by ${label}`
+        }
+      >
+        {label}
+        {/* Reserve the arrow's width always, so the header does not jump
+            sideways when a column becomes active. */}
+        <span
+          aria-hidden
+          className={`w-2 text-[9px] leading-none ${
+            active ? "text-accent" : "text-muted opacity-0 group-hover:opacity-60"
+          }`}
+        >
+          {active && direction === "desc" ? "▼" : "▲"}
+        </span>
+      </button>
+    </th>
+  );
+}
+
 export function ProspectsTable({
   prospects,
   strategies,
   archivedView = false,
   total = 0,
   filters = {},
+  sort,
+  direction = "asc",
 }: {
   prospects: Prospect[];
   strategies: Strategy[];
@@ -33,6 +93,8 @@ export function ProspectsTable({
   total?: number;
   /** The active filters, so "select all matching" asks for the same set. */
   filters?: Record<string, string | boolean | undefined>;
+  sort?: string;
+  direction?: string;
 }) {
   // One set, whether the ids came from this page or from "select all
   // matching" -- every bulk action then works the same way regardless.
@@ -43,6 +105,7 @@ export function ProspectsTable({
   const [pending, startTransition] = useTransition();
   const { toast, show } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Every visible row ticked. Compared against the page, not the selection,
   // so it stays true once "select all matching" has pulled in off-page ids.
@@ -51,6 +114,28 @@ export function ProspectsTable({
   const moreBeyondPage = total > prospects.length;
   const selectionExceedsPage = selected.size > prospects.length;
   const defaultStrategy = strategies.find((s) => s.is_default) ?? strategies[0];
+
+  // asc -> desc -> off. Changing the sort resets to page 1: staying on page 3
+  // of a different ordering shows rows that were never the ones you clicked
+  // to see. The selection is cleared for the same reason -- ids selected under
+  // the old order are no longer what is on screen.
+  function onSort(column: string) {
+    const qs = new URLSearchParams(searchParams.toString());
+    if (sort !== column) {
+      qs.set("sort", column);
+      qs.set("direction", "asc");
+    } else if (direction === "asc") {
+      qs.set("direction", "desc");
+    } else {
+      qs.delete("sort");
+      qs.delete("direction");
+    }
+    qs.delete("page");
+    setSelected(new Set());
+    router.push(`/prospects?${qs}`);
+  }
+
+  const sortProps = { sort, direction, onSort };
 
   async function selectAllMatching() {
     setSelectingAll(true);
@@ -321,11 +406,14 @@ export function ProspectsTable({
                     className="h-4 w-4 cursor-pointer rounded border-line accent-[rgb(var(--accent))]"
                   />
                 </th>
-                <th className="px-4 py-3 font-medium">Prospect</th>
-                <th className="px-4 py-3 font-medium">Company</th>
+                <SortHeader column="prospect" label="Prospect" {...sortProps} />
+                <SortHeader column="company" label="Company" {...sortProps} />
+                {/* Intent lives in a JSONB array and is derived per row, so
+                    there is no column to order by -- left unsortable rather
+                    than sorted wrongly. */}
                 <th className="hidden px-4 py-3 font-medium lg:table-cell">Intent</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Pipeline</th>
+                <SortHeader column="status" label="Status" {...sortProps} />
+                <SortHeader column="pipeline" label="Pipeline" {...sortProps} />
               </tr>
             </thead>
             <tbody className="divide-y divide-line-soft">

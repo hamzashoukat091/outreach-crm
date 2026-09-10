@@ -22,6 +22,8 @@ export default async function ProspectsPage({
     pipeline?: string;
     category?: string;
     completeness?: string;
+    sort?: string;
+    direction?: string;
     view?: string;
     page?: string;
   }>;
@@ -42,6 +44,8 @@ export default async function ProspectsPage({
         pipeline_mode: params.pipeline,
         category: params.category,
         completeness: params.completeness,
+        sort: params.sort,
+        direction: params.direction,
         archived: archivedView,
         page,
         page_size: PAGE_SIZE,
@@ -135,8 +139,12 @@ export default async function ProspectsPage({
           pipeline_mode: params.pipeline,
           category: params.category,
           completeness: params.completeness,
+          sort: params.sort,
+          direction: params.direction,
           archived: archivedView,
         }}
+        sort={params.sort}
+        direction={params.direction ?? "asc"}
       />
 
       {totalPages > 1 && (

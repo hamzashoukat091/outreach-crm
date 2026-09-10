@@ -286,10 +286,45 @@ def _filtered(stmt, f: ProspectFilters):
     return stmt
 
 
+# Sortable columns, mapped from the name the UI sends. Only these: an
+# open-ended `order_by` on a user string is an injection surface, and a
+# column nobody can see sorted is not a feature.
+SORT_COLUMNS = {
+    "prospect": (Prospect.first_name, Prospect.last_name),
+    "company": (Prospect.company_name,),
+    "status": (Prospect.status,),
+    "pipeline": (Prospect.pipeline_mode,),
+    "created": (Prospect.created_at,),
+}
+
+# The default: complete records first, newest first within that. Sorting by a
+# chosen column drops the completeness tiebreak, since mixing the two produced
+# an order that looked wrong ("why is this A below that B").
+DEFAULT_ORDER = (Prospect.is_complete.desc(), Prospect.created_at.desc())
+
+
+def _ordering(sort: str | None, direction: str):
+    if not sort or sort not in SORT_COLUMNS:
+        return DEFAULT_ORDER
+    columns = SORT_COLUMNS[sort]
+    descending = direction == "desc"
+    # NULLs last in both directions: a blank company is never the most
+    # interesting row, and Postgres would otherwise float them to the top
+    # of a descending sort.
+    clauses = [
+        (c.desc() if descending else c.asc()).nullslast() for c in columns
+    ]
+    # Stable tiebreak, so paging cannot show the same row twice when many
+    # rows share a status.
+    return (*clauses, Prospect.created_at.desc())
+
+
 @router.get("/ids", response_model=list[uuid.UUID])
 def list_prospect_ids(
     db: Session = Depends(get_db),
     filters: ProspectFilters = Depends(),
+    sort: str | None = None,
+    direction: str = Query("asc", pattern="^(asc|desc)$"),
     limit: int = Query(2000, ge=1, le=10000),
 ):
     """Every id matching the current filters, for "select all N matching".
@@ -302,7 +337,7 @@ def list_prospect_ids(
     return list(
         db.scalars(
             _filtered(select(Prospect.id), filters)
-            .order_by(Prospect.is_complete.desc(), Prospect.created_at.desc())
+            .order_by(*_ordering(sort, direction))
             .limit(limit)
         ).all()
     )
@@ -312,6 +347,8 @@ def list_prospect_ids(
 def list_prospects(
     db: Session = Depends(get_db),
     filters: ProspectFilters = Depends(),
+    sort: str | None = None,
+    direction: str = Query("asc", pattern="^(asc|desc)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=200),
 ):
@@ -323,7 +360,7 @@ def list_prospects(
         select(func.count()).select_from(stmt.order_by(None).subquery())
     ) or 0
     rows = db.scalars(
-        stmt.order_by(Prospect.is_complete.desc(), Prospect.created_at.desc())
+        stmt.order_by(*_ordering(sort, direction))
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).unique().all()
