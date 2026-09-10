@@ -21,6 +21,9 @@ const STATUSES = [
 
 const STATUS_LABEL: Record<string, string> = {
   approved: "Sent",
+  // Matches the badge on the row (prospect-ui). A shorter word here would
+  // narrow the control, but a filter that says one thing and a badge that
+  // says another is a worse trade than the width.
   not_interested: "Not interested",
 };
 
@@ -137,7 +140,10 @@ export function ProspectToolbar({
             router.push(`/prospects?${next.toString()}`);
           }}
           aria-label="Filter by status or pipeline"
-          className="input min-h-11 w-full min-w-0 text-sm sm:h-9 sm:w-auto sm:py-0"
+          // Capped rather than sized to the longest option: the open list can
+          // be as wide as it likes, but the closed control sits in a row with
+          // four others and does not need to reserve room for "Not interested".
+          className="input min-h-11 w-full min-w-0 text-sm sm:h-9 sm:w-auto sm:max-w-[10.5rem] sm:py-0"
         >
           <option value="">All statuses</option>
           <optgroup label="Status">
@@ -158,9 +164,12 @@ export function ProspectToolbar({
               the limiter uses, so this list is exactly the N in "N/10 today"
               -- a calendar-hour version would show a different set than the
               number it is meant to explain. */}
+          {/* A select is as wide as its longest option, and these were it.
+              The group heading already says "mailed", so repeating it in
+              every entry cost width to say nothing. */}
           <optgroup label="Recently mailed">
-            <option value="sent:hour">Mailed in the last hour</option>
-            <option value="sent:day">Mailed in the last 24 hours</option>
+            <option value="sent:hour">Last hour</option>
+            <option value="sent:day">Last 24 hours</option>
           </optgroup>
         </select>
 
