@@ -19,7 +19,7 @@ import logging
 import re
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Prospect, ProspectEvent, ProspectEventType
@@ -212,6 +212,39 @@ def parse_row(raw_row: dict[str, Any], row_no: int) -> tuple[dict | None, str | 
     return payload, None
 
 
+def _unique_category(db: Session, category: str) -> str:
+    """Give a repeat import of the same vertical its own label.
+
+    Typing "Real Estate" a second time otherwise merges the new rows into the
+    first run's 46, and nothing afterwards can separate them: imported_at is
+    left untouched on an update, so even a timestamp filter would not recover
+    the batch. Suffixing keeps each run selectable in the category dropdown
+    that already exists, and keeps reply-rate-per-run meaningful.
+
+    The suffix counts existing runs rather than incrementing the highest seen,
+    so deleting "#2" and re-importing does not silently reuse its label.
+    """
+    taken = set(
+        db.scalars(
+            select(Prospect.category).where(
+                or_(
+                    Prospect.category == category,
+                    Prospect.category.like(f"{category} #%"),
+                )
+            )
+        ).all()
+    )
+    if category not in taken:
+        return category
+    # Cap at the column width (60); a name long enough to collide there is
+    # already unusable as a label.
+    for n in range(2, 1000):
+        candidate = f"{category} #{n}"[:60]
+        if candidate not in taken:
+            return candidate
+    return category
+
+
 def import_prospects_csv(
     db: Session,
     content: bytes,
@@ -227,6 +260,7 @@ def import_prospects_csv(
         "skipped": 0,
         "incomplete": 0,
         "errors": [],
+        "category": category,
     }
 
     try:
@@ -275,6 +309,12 @@ def import_prospects_csv(
             + ". Emails will be written without that context."
         )
 
+    # Resolved once, after the file is known to be importable -- a rejected
+    # CSV must not burn a run number.
+    if category:
+        category = _unique_category(db, category)
+        result["category"] = category
+
     seen: set[str] = set()
 
     for row_no, raw_row in enumerate(reader, start=2):
@@ -316,6 +356,13 @@ def import_prospects_csv(
             # blank out company data an earlier complete one provided.
             for key, value in payload.items():
                 if key in {"is_complete", "missing_fields", "company_inferred"}:
+                    continue
+                # Category records which run first found this prospect, so it
+                # is set once and never moved. Reassigning it here would shrink
+                # the earlier run's batch every time a later file re-listed
+                # someone -- the counts in the dropdown would drift downwards
+                # and the original selection could never be recovered.
+                if key == "category" and existing.category:
                     continue
                 if value in (None, "", [], {}):
                     continue

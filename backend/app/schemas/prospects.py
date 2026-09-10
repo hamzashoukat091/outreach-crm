@@ -136,6 +136,10 @@ class ProspectImportResult(BaseModel):
     updated: int
     skipped: int
     incomplete: int
+    # The label these rows actually landed under, which is not always the one
+    # asked for: a repeat of an existing vertical is suffixed ("Real Estate #2")
+    # so each run stays separately selectable. The UI reports it back.
+    category: str | None = None
     errors: list[str] = Field(default_factory=list)
 
 

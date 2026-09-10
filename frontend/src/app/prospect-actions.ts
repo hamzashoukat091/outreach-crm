@@ -87,9 +87,19 @@ export async function importProspectsAction(
     const incomplete = data.incomplete
       ? ` ${data.incomplete} need company info.`
       : "";
+    // A repeat of an existing vertical lands under a suffixed label. Saying so
+    // is the difference between finding this batch in the dropdown and hunting
+    // for a name that isn't there.
+    const renamed =
+      data.category && data.category !== category
+        ? ` Filed under "${data.category}" — the name was taken.`
+        : "";
     const firstError = data.errors?.length ? ` First issue: ${data.errors[0]}` : "";
 
-    return { ok: true, message: `${parts.join(", ")}.${incomplete}${firstError}` };
+    return {
+      ok: true,
+      message: `${parts.join(", ")}.${incomplete}${renamed}${firstError}`,
+    };
   } catch {
     return { ok: false, message: "Import failed. Is the API running?" };
   }
