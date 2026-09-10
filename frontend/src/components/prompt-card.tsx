@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { LeadPrompt } from "@/lib/lead-prompts";
 
 /**
@@ -13,15 +13,19 @@ import type { LeadPrompt } from "@/lib/lead-prompts";
  */
 export function PromptCard({ prompt }: { prompt: LeadPrompt }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const boxRef = useRef<HTMLTextAreaElement>(null);
 
   async function copy() {
     try {
       await navigator.clipboard.writeText(prompt.body);
       setState("copied");
     } catch {
-      // Clipboard access can be refused outright (permissions, an insecure
-      // origin). Saying so beats a button that silently does nothing --
-      // the text is selectable by hand as a fallback.
+      // Clipboard access can be refused (permissions, an insecure origin, a
+      // locked-down browser). Select the text so the keyboard fallback the
+      // button then names actually works -- telling someone to press Ctrl+C
+      // with nothing selected is not a fallback.
+      boxRef.current?.focus();
+      boxRef.current?.select();
       setState("failed");
     }
     setTimeout(() => setState("idle"), 2000);
@@ -60,6 +64,7 @@ export function PromptCard({ prompt }: { prompt: LeadPrompt }) {
       </div>
 
       <textarea
+        ref={boxRef}
         readOnly
         value={prompt.body}
         spellCheck={false}
