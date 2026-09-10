@@ -24,10 +24,8 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function ProspectToolbar({
-  seniorities,
   categories = [],
 }: {
-  seniorities: string[];
   categories?: CategoryCount[];
 }) {
   const router = useRouter();
@@ -102,26 +100,6 @@ export function ProspectToolbar({
           ))}
         </select>
 
-        {/* A toggle, not a third select: "show me the thin ones" is the only
-            question anyone actually asks of this field, and the 3-option
-            version cost 172px to say it. */}
-        <button
-          onClick={() =>
-            setParam(
-              "completeness",
-              params.get("completeness") === "incomplete" ? "" : "incomplete",
-            )
-          }
-          className={`h-9 shrink-0 rounded-lg border px-3 text-sm transition-colors ${
-            params.get("completeness") === "incomplete"
-              ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-              : "border-line text-muted hover:bg-surface-2 hover:text-ink"
-          }`}
-          title="Show only prospects missing company info"
-        >
-          Needs info
-        </button>
-
         {categories.length > 0 && (
           <select
             defaultValue={params.get("category") ?? ""}
@@ -132,21 +110,6 @@ export function ProspectToolbar({
             {categories.map((c) => (
               <option key={c.category ?? "none"} value={c.category ?? "none"}>
                 {(c.category ?? "Uncategorised") + ` (${c.count})`}
-              </option>
-            ))}
-          </select>
-        )}
-
-        {seniorities.length > 0 && (
-          <select
-            defaultValue={params.get("seniority") ?? ""}
-            onChange={(e) => setParam("seniority", e.target.value)}
-            className="input min-h-11 w-full min-w-0 text-sm sm:h-9 sm:w-auto sm:py-0"
-          >
-            <option value="">All seniority</option>
-            {seniorities.map((s) => (
-              <option key={s} value={s}>
-                {s.toUpperCase()}
               </option>
             ))}
           </select>

@@ -132,7 +132,6 @@ export const api = {
     params: {
       q?: string;
       status?: string;
-      seniority?: string;
       industry?: string;
       category?: string;
       completeness?: string;

@@ -16,7 +16,6 @@ export default async function ProspectsPage({
   searchParams: Promise<{
     q?: string;
     status?: string;
-    seniority?: string;
     category?: string;
     completeness?: string;
     view?: string;
@@ -36,7 +35,6 @@ export default async function ProspectsPage({
       api.listProspects({
         q: params.q,
         status: params.status,
-        seniority: params.seniority,
         category: params.category,
         completeness: params.completeness,
         archived: archivedView,
@@ -56,7 +54,6 @@ export default async function ProspectsPage({
   const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
   // Reply strategies belong to the automation engine, not manual generation.
   const activeStrategies = strategies.filter((s) => s.is_active && s.kind !== "reply");
-  const seniorities = analytics?.by_seniority.map((s) => s.label) ?? [];
   const incomplete = analytics?.incomplete ?? 0;
 
   function pageHref(target: number) {
@@ -118,7 +115,7 @@ export default async function ProspectsPage({
 
       {!archivedView && (
         <Suspense fallback={null}>
-          <ProspectToolbar seniorities={seniorities} categories={categories} />
+          <ProspectToolbar categories={categories} />
         </Suspense>
       )}
 

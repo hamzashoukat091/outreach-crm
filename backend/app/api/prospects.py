@@ -206,7 +206,6 @@ def list_prospects(
     db: Session = Depends(get_db),
     q: str | None = Query(None, description="Search name, email, company, or title"),
     prospect_status: ProspectStatus | None = Query(None, alias="status"),
-    seniority: str | None = None,
     industry: str | None = None,
     category: str | None = Query(None, description="Which sourcing run they came from"),
     completeness: str | None = Query(None, pattern="^(complete|incomplete)$"),
@@ -236,8 +235,6 @@ def list_prospects(
         )
     if prospect_status:
         stmt = stmt.where(Prospect.status == prospect_status)
-    if seniority:
-        stmt = stmt.where(Prospect.seniority == seniority)
     if industry:
         stmt = stmt.where(Prospect.industry == industry)
     if category:
