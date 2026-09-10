@@ -8,14 +8,12 @@ import {
   bulkDeleteProspectsAction,
   generateBulkAction,
 } from "@/app/prospect-actions";
-import {
-  bulkHandoffAction,
-  bulkReturnToManualAction,
-} from "@/app/automation-actions";
+import { bulkReturnToManualAction } from "@/app/automation-actions";
 import type { Prospect, Strategy } from "@/lib/prospect-types";
 import type { EnrollmentState } from "@/lib/types";
 import { EmptyState, Tag, formatDate } from "@/components/ui";
 import { EnrollmentStateBadge } from "@/components/automation-ui";
+import { EnrollDialog } from "@/components/enroll-dialog";
 import { ProspectStatusBadge } from "@/components/prospect-ui";
 import { Toast, useToast } from "@/components/toast";
 import { SendIcon } from "@/components/send-icon";
@@ -30,6 +28,7 @@ export function ProspectsTable({
   archivedView?: boolean;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [enrolling, setEnrolling] = useState(false);
   const [strategyId, setStrategyId] = useState("");
   const [pending, startTransition] = useTransition();
   const { toast, show } = useToast();
@@ -87,24 +86,9 @@ export function ProspectsTable({
     });
   }
 
-  function handoff() {
-    if (
-      !window.confirm(
-        `Hand off ${selected.size} prospect(s) to automation? The engine takes over their outreach.`,
-      )
-    ) {
-      return;
-    }
-
-    startTransition(async () => {
-      const result = await bulkHandoffAction([...selected]);
-      show(result);
-      if (result.ok) {
-        setSelected(new Set());
-        router.refresh();
-      }
-    });
-  }
+  // Enrolling is what people actually came for, and it sets pipeline_mode to
+  // "automated" itself -- so there is no separate handoff step to take first.
+  const selectedProspects = prospects.filter((p) => selected.has(p.id));
 
   function returnToManual() {
     if (
@@ -207,9 +191,18 @@ export function ProspectsTable({
               >
                 {pending ? "Generating…" : `Generate ${selected.size} email(s)`}
               </button>
-              {/* Whichever direction the selection can actually move. Showing
-                  both at once invites picking the one that does nothing. */}
-              {selectedAutomated > 0 ? (
+              <button
+                onClick={() => setEnrolling(true)}
+                disabled={pending}
+                className="btn-send h-9"
+                title="Put the selected prospects into a sequence and schedule their first email"
+              >
+                <SendIcon />
+                Enroll in sequence
+              </button>
+              {/* Only offered when the selection has somewhere to go back to.
+                  Anyone mid-sequence is skipped by the endpoint. */}
+              {selectedAutomated > 0 && (
                 <button
                   onClick={returnToManual}
                   disabled={pending}
@@ -218,16 +211,6 @@ export function ProspectsTable({
                 >
                   Return to manual
                   {selectedAutomated < selected.size ? ` (${selectedAutomated})` : ""}
-                </button>
-              ) : (
-                <button
-                  onClick={handoff}
-                  disabled={pending}
-                  className="btn-send h-9"
-                  title="Let the automation engine run outreach for the selected prospects"
-                >
-                  <SendIcon />
-                  Hand off
                 </button>
               )}
               <button
@@ -419,6 +402,21 @@ export function ProspectsTable({
           </table>
         </div>
       </div>
+
+      {enrolling && (
+        <EnrollDialog
+          prospects={selectedProspects}
+          onClose={() => setEnrolling(false)}
+          onDone={(result) => {
+            show(result);
+            if (result.ok) {
+              setEnrolling(false);
+              setSelected(new Set());
+              router.refresh();
+            }
+          }}
+        />
+      )}
 
       <Toast state={toast} />
     </>

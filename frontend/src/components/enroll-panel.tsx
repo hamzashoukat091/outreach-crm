@@ -240,7 +240,7 @@ export function EnrollPanel({
         <p className="mt-1 text-xs text-muted">
           {total === null
             ? "Loading eligible prospects…"
-            : `${total} to choose from. Enrolling starts the sequence and moves them to automation — you don't need to hand them off first.`}
+            : `${total} to choose from. Enrolling starts the sequence and moves them to automation. You can also enroll straight from the Prospects page.`}
         </p>
 
         {!hasSteps && (
@@ -261,9 +261,10 @@ export function EnrollPanel({
           className="input mt-3"
         />
 
-        {/* Handing a prospect off marks them for automation but schedules
-            nothing. Without this they sit invisibly between the two sections,
-            waiting for an enrollment nobody knows to create. */}
+        {/* Prospects marked for automation by an older handoff, or by a run
+            that was reset -- marked but scheduled nothing. Without this they
+            sit between the two sections waiting for an enrollment nobody
+            knows to create. */}
         {waiting.length > 0 && (
           <button
             onClick={() =>

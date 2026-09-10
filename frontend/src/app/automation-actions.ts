@@ -31,19 +31,12 @@ function refreshAutomation(sequenceId?: string) {
   if (sequenceId) revalidatePath(`/sequences/${sequenceId}`);
 }
 
-// ---------- Pipeline handoff ----------
-
-export async function handoffProspectAction(id: string): Promise<ActionState> {
-  try {
-    await api.handoffProspect(id);
-  } catch (error) {
-    return fail(error);
-  }
-
-  revalidatePath("/prospects");
-  revalidatePath(`/prospects/${id}`);
-  return { ok: true, message: "Handed off to automation." };
-}
+// ---------- Pipeline mode ----------
+//
+// There is no handoff action here on purpose. Enrolling flips pipeline_mode to
+// "automated" itself, so a separate "hand off" step changed nothing you would
+// not get one step later -- it only stranded prospects in a state no page
+// listed. Enroll from the Prospects page instead; these move them back.
 
 export async function returnToManualAction(id: string): Promise<ActionState> {
   try {
@@ -55,25 +48,6 @@ export async function returnToManualAction(id: string): Promise<ActionState> {
   revalidatePath("/prospects");
   revalidatePath(`/prospects/${id}`);
   return { ok: true, message: "Back in your manual pipeline." };
-}
-
-export async function bulkHandoffAction(ids: string[]): Promise<ActionState> {
-  if (!ids.length) return { ok: false, message: "Select at least one prospect." };
-
-  try {
-    const res = await api.bulkHandoffProspects(ids);
-    revalidatePath("/prospects");
-
-    if (res.updated < res.total) {
-      return {
-        ok: true,
-        message: `Handed off ${res.updated} of ${res.total} — the rest were already automated.`,
-      };
-    }
-    return { ok: true, message: `Handed off ${res.updated} prospect(s) to automation.` };
-  } catch (error) {
-    return fail(error);
-  }
 }
 
 export async function bulkReturnToManualAction(ids: string[]): Promise<ActionState> {
