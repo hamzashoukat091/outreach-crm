@@ -87,30 +87,54 @@ export function ProspectToolbar({
           className="input col-span-2 min-h-11 w-full min-w-0 flex-1 sm:h-9 sm:max-w-xs sm:w-auto sm:py-0"
         />
 
+        {/* Status and pipeline mode in one control. They are separate query
+            params, so the value carries which one it sets -- "pipeline:manual"
+            vs a bare status. Grouped rather than merged into a flat list:
+            "Replied" and "Manual only" answer different questions and a single
+            ungrouped list of both reads as one taxonomy.
+
+            Only one can be active at a time, which is the trade for the space:
+            picking a status clears the pipeline filter and vice versa. The
+            pair was almost never combined, and "Manual only" alongside
+            "Replied" is close to a contradiction anyway. */}
         <select
-          defaultValue={params.get("status") ?? ""}
-          onChange={(e) => setParam("status", e.target.value)}
+          value={
+            params.get("pipeline")
+              ? `pipeline:${params.get("pipeline")}`
+              : (params.get("status") ?? "")
+          }
+          onChange={(e) => {
+            const value = e.target.value;
+            const next = new URLSearchParams(params.toString());
+            next.delete("page");
+            if (value.startsWith("pipeline:")) {
+              next.set("pipeline", value.slice("pipeline:".length));
+              next.delete("status");
+            } else {
+              next.delete("pipeline");
+              if (value) next.set("status", value);
+              else next.delete("status");
+            }
+            router.push(`/prospects?${next.toString()}`);
+          }}
+          aria-label="Filter by status or pipeline"
           className="input min-h-11 w-full min-w-0 text-sm sm:h-9 sm:w-auto sm:py-0"
         >
           <option value="">All statuses</option>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABEL[s] ?? s.charAt(0).toUpperCase() + s.slice(1)}
-            </option>
-          ))}
-        </select>
-
-        {/* "Which of these have I not enrolled yet" is the question that costs
-            you a mis-send when it cannot be asked. Manual = never handed to
-            the engine; enrolling is what flips it. */}
-        <select
-          defaultValue={params.get("pipeline") ?? ""}
-          onChange={(e) => setParam("pipeline", e.target.value)}
-          className="input min-h-11 w-full min-w-0 text-sm sm:h-9 sm:w-auto sm:py-0"
-        >
-          <option value="">Manual &amp; automated</option>
-          <option value="manual">Manual only</option>
-          <option value="automated">Automated only</option>
+          <optgroup label="Status">
+            {STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABEL[s] ?? s.charAt(0).toUpperCase() + s.slice(1)}
+              </option>
+            ))}
+          </optgroup>
+          {/* Manual = never handed to the engine; enrolling is what flips it.
+              "Which of these have I not enrolled yet" is the question that
+              costs you a mis-send when it cannot be asked. */}
+          <optgroup label="Pipeline">
+            <option value="pipeline:manual">Manual only</option>
+            <option value="pipeline:automated">Automated only</option>
+          </optgroup>
         </select>
 
         {categories.length > 0 && (
