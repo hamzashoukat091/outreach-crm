@@ -7,12 +7,12 @@ import { SimulateReplyBox } from "@/components/inbox-view";
 import { MessageStateBadge, SituationBadge } from "@/components/automation-ui";
 import { PromptInspector } from "@/components/prompt-inspector";
 import { formatDate } from "@/components/ui";
+import { messageMoment } from "@/lib/schedule-preview";
 
 function MessageRow({ message }: { message: AutomationMessage }) {
   const [open, setOpen] = useState(false);
   const outbound = message.direction === "outbound";
-  const timestamp =
-    message.sent_at ?? message.received_at ?? message.scheduled_for ?? message.created_at;
+  const timestamp = messageMoment(message);
 
   return (
     <li className="py-3 first:pt-0 last:pb-0">
@@ -103,9 +103,9 @@ export function AutomationConversation({
   // the previous step sent -- while the row shows scheduled_for, days later.
   // A message booked Sep 4 for Sep 14 therefore sorted before a Sep 7 send
   // and displayed after it: the list read 4th, 14th, 7th.
-  const when = (m: AutomationMessage) =>
-    m.sent_at ?? m.received_at ?? m.scheduled_for ?? m.created_at;
-  const ordered = [...messages].sort((a, b) => (when(a) < when(b) ? -1 : 1));
+  const ordered = [...messages].sort((a, b) =>
+    messageMoment(a) < messageMoment(b) ? -1 : 1,
+  );
 
   return (
     <section className="card p-5">

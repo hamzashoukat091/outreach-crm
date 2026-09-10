@@ -13,6 +13,7 @@ import { api } from "@/lib/api";
 import type { AutomationMessage, EnrollmentDetail, InboxItem } from "@/lib/types";
 import { SituationBadge } from "@/components/automation-ui";
 import { formatDate } from "@/components/ui";
+import { messageMoment } from "@/lib/schedule-preview";
 import { Toast, useToast } from "@/components/toast";
 import { SendIcon } from "@/components/send-icon";
 
@@ -43,7 +44,7 @@ function MessageBubble({
   const outbound = message.direction === "outbound";
   const sent = message.state === "sent";
   const timestamp =
-    message.sent_at ?? message.received_at ?? message.scheduled_for ?? message.created_at;
+    messageMoment(message);
 
   if (isPendingApproval) return null; // rendered separately as the editable card
 
@@ -302,11 +303,9 @@ export function InboxView({ items }: { items: InboxItem[] }) {
   }
 
   const messages = detail
-    ? [...detail.messages].sort((a, b) => {
-        const ta = a.sent_at ?? a.received_at ?? a.created_at;
-        const tb = b.sent_at ?? b.received_at ?? b.created_at;
-        return ta < tb ? -1 : 1;
-      })
+    ? [...detail.messages].sort((a, b) =>
+        messageMoment(a) < messageMoment(b) ? -1 : 1,
+      )
     : [];
   // The inbox only flags THAT something is held; the message itself is found
   // in the client-fetched thread.

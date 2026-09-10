@@ -161,11 +161,6 @@ export function formatInZone(date: Date, timeZone: string): string {
   }).format(date);
 }
 
-/** "9:00 am" today, "tomorrow 9:00 am" otherwise, "Mon 9:00 am" beyond that.
- *
- *  The full formatInZone string is right for a schedule preview and too long
- *  for a sidebar line, where the day is usually redundant -- a window that
- *  reopens in two hours does not need a date attached. */
 /** "in 42m", "in 3h 05m", "in 2d". Coarse on purpose above an hour: a
  *  seconds-accurate countdown implies a precision the 15s worker tick and the
  *  rate limiter do not have. */
@@ -183,6 +178,11 @@ export function untilText(target: Date, from = new Date()): string {
   return `in ${days}d`;
 }
 
+/** "9:00 am" today, "tomorrow 9:00 am" otherwise, "Mon 9:00 am" beyond that.
+ *
+ *  The full formatInZone string is right for a schedule preview and too long
+ *  for a sidebar line, where the day is usually redundant -- a window that
+ *  reopens in two hours does not need a date attached. */
 export function shortTimeInZone(date: Date, timeZone: string, from = new Date()): string {
   const time = new Intl.DateTimeFormat("en-GB", {
     hour: "numeric",
@@ -247,4 +247,20 @@ export function windowSummary(settings: AutomationSettings): string {
   return `${dayText}, ${time(settings.send_window_start)}–${time(
     settings.send_window_end,
   )} ${settings.timezone}`;
+}
+
+/** The moment a message row represents, and the key it must sort on.
+ *
+ * A queued follow-up is booked the instant the previous step sends, so its
+ * created_at is days before the scheduled_for the row displays. Sorting on
+ * one while showing the other put a Sep 14 send between Sep 4 and Sep 7.
+ * One expression, used by every list and every row, so they cannot diverge.
+ */
+export function messageMoment(m: {
+  sent_at?: string | null;
+  received_at?: string | null;
+  scheduled_for?: string | null;
+  created_at?: string | null;
+}): string {
+  return m.sent_at ?? m.received_at ?? m.scheduled_for ?? m.created_at ?? "";
 }
