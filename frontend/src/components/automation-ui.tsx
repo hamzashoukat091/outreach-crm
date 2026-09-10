@@ -84,15 +84,55 @@ const MESSAGE_STATE_TONE: Record<string, string> = {
   received: "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 ring-slate-600/15 dark:ring-slate-400/20",
 };
 
-export function MessageStateBadge({ state }: { state: string }) {
+/* The stored state is the engine's vocabulary, not the reader's. "drafting"
+   in particular claims work is underway when usually none is: the worker only
+   writes a message once its send time is inside a 24h horizon, so a follow-up
+   queued for next week sits in 'drafting' for days with nothing happening to
+   it. Reading that as "stuck" is the reasonable conclusion, and it is wrong. */
+const MESSAGE_STATE_LABEL: Record<string, string> = {
+  drafting: "queued",
+  scheduled: "ready",
+  needs_approval: "needs approval",
+};
+
+const MESSAGE_STATE_TITLE: Record<string, string> = {
+  drafting:
+    "Queued. Claude writes it about a day before it sends, so the copy is not stale by the time it goes.",
+  scheduled: "Written and waiting for its send time.",
+  needs_approval: "Held for you to approve before it can send.",
+  sent: "Delivered.",
+  failed: "The send failed.",
+  cancelled: "Cancelled — this will not send.",
+};
+
+export function MessageStateBadge({
+  state,
+  scheduledFor,
+}: {
+  state: string;
+  /** When known, a queued message says when it will be written. */
+  scheduledFor?: string | null;
+}) {
+  // Inside the horizon there really is work in flight, so say so.
+  const imminent =
+    state === "drafting" &&
+    scheduledFor != null &&
+    new Date(scheduledFor).getTime() - Date.now() < 24 * 3600_000;
+  const label = imminent ? "writing" : (MESSAGE_STATE_LABEL[state] ?? state.replace(/_/g, " "));
+
   return (
     <span
+      title={
+        imminent
+          ? "Claude is writing this now."
+          : MESSAGE_STATE_TITLE[state]
+      }
       className={`${BADGE_BASE} ${
         MESSAGE_STATE_TONE[state] ??
         "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
       }`}
     >
-      {state.replace(/_/g, " ")}
+      {label}
     </span>
   );
 }

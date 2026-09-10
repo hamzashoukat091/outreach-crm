@@ -28,8 +28,18 @@ function MessageRow({ message }: { message: AutomationMessage }) {
           >
             {outbound ? "→" : "←"}
           </span>
-          <span className="truncate text-sm text-ink">
-            {message.subject || "(no subject)"}
+          {/* A queued message has no subject because Claude has not written
+              it yet, which "(no subject)" reads as a defect rather than a
+              not-yet. Say which it is. */}
+          <span
+            className={`truncate text-sm ${
+              message.subject ? "text-ink" : "italic text-muted"
+            }`}
+          >
+            {message.subject ||
+              (message.state === "drafting"
+                ? "Not written yet"
+                : "(no subject)")}
           </span>
           <span className="shrink-0 text-xs text-muted">
             {message.kind.replace(/_/g, " ")}
@@ -37,7 +47,10 @@ function MessageRow({ message }: { message: AutomationMessage }) {
         </span>
         <span className="flex shrink-0 items-center gap-2">
           {!outbound && <SituationBadge situation={message.situation} />}
-          <MessageStateBadge state={message.state} />
+          <MessageStateBadge
+            state={message.state}
+            scheduledFor={message.scheduled_for}
+          />
           <time className="hidden text-xs text-muted sm:block">
             {formatDate(timestamp)}
           </time>
@@ -46,7 +59,15 @@ function MessageRow({ message }: { message: AutomationMessage }) {
 
       {open && (
         <div className="mt-2 rounded-lg bg-surface-2 p-3">
-          <p className="prose-email text-sm text-muted">{message.body ?? ""}</p>
+          {message.body ? (
+            <p className="prose-email text-sm text-muted">{message.body}</p>
+          ) : (
+            <p className="text-sm italic text-muted">
+              {message.state === "drafting"
+                ? "Claude writes this about a day before it sends, so the copy is not stale by the time it goes out."
+                : "No body."}
+            </p>
+          )}
           <div className="mt-2 flex items-center justify-between gap-2">
             <time className="text-xs text-muted sm:hidden">{formatDate(timestamp)}</time>
             {outbound && (message.strategy_name || message.model) && (
