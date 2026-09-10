@@ -269,10 +269,21 @@ def _filtered(stmt, f: ProspectFilters):
             Prospect.category.is_(None) if f.category == "none"
             else Prospect.category == f.category
         )
+    # An accepted prospect counts as complete here: "Review them" exists to
+    # find rows still wanting attention, and one you already ruled on is not
+    # one of them.
     if f.completeness == "complete":
-        stmt = stmt.where(Prospect.is_complete.is_(True))
+        stmt = stmt.where(
+            or_(
+                Prospect.is_complete.is_(True),
+                Prospect.completeness_ack_at.isnot(None),
+            )
+        )
     elif f.completeness == "incomplete":
-        stmt = stmt.where(Prospect.is_complete.is_(False))
+        stmt = stmt.where(
+            Prospect.is_complete.is_(False),
+            Prospect.completeness_ack_at.is_(None),
+        )
 
     if f.has_draft is not None:
         live_drafts = (
@@ -472,6 +483,61 @@ def bulk_delete(ids: list[uuid.UUID], db: Session = Depends(get_db)):
         db.delete(prospect)
     db.commit()
     return {"deleted": len(rows)}
+
+
+# ---------- Completeness ----------
+
+
+@router.post("/{prospect_id}/accept-missing-info", response_model=ProspectOut)
+def accept_missing_info(prospect_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Stop warning that this prospect has no company data.
+
+    The data stays missing and is_complete stays False -- this records only
+    that you looked and decided it is fine, which is why filling the fields in
+    later still clears the warning on its own.
+    """
+    prospect = _get(db, prospect_id)
+    if prospect.completeness_ack_at is None:
+        prospect.completeness_ack_at = datetime.now(timezone.utc)
+        _log(
+            db,
+            prospect.id,
+            ProspectEventType.updated,
+            "Accepted the missing company info",
+            {"missing": prospect.missing_fields},
+        )
+        db.commit()
+        db.refresh(prospect)
+    return _serialize(prospect)
+
+
+@router.post("/{prospect_id}/unaccept-missing-info", response_model=ProspectOut)
+def unaccept_missing_info(prospect_id: uuid.UUID, db: Session = Depends(get_db)):
+    prospect = _get(db, prospect_id)
+    if prospect.completeness_ack_at is not None:
+        prospect.completeness_ack_at = None
+        db.commit()
+        db.refresh(prospect)
+    return _serialize(prospect)
+
+
+@router.post("/bulk-accept-missing-info")
+def bulk_accept_missing_info(
+    payload: BulkHandoffRequest, db: Session = Depends(get_db)
+):
+    rows = db.scalars(select(Prospect).where(Prospect.id.in_(payload.ids))).all()
+    now = datetime.now(timezone.utc)
+    changed = 0
+    for prospect in rows:
+        # Only rows that are actually warning: acknowledging a complete
+        # prospect would leave a stale timestamp that silences a real warning
+        # if its data is later overwritten by a thinner import.
+        if prospect.is_complete or prospect.completeness_ack_at is not None:
+            continue
+        prospect.completeness_ack_at = now
+        changed += 1
+    db.commit()
+    return {"updated": changed, "total": len(rows)}
 
 
 # ---------- Archive ----------

@@ -105,6 +105,28 @@ export async function importProspectsAction(
   }
 }
 
+// ---------- Completeness ----------
+
+export async function acceptMissingInfoAction(
+  id: string,
+  accepted = true,
+): Promise<ActionState> {
+  try {
+    if (accepted) await api.acceptMissingInfo(id);
+    else await api.unacceptMissingInfo(id);
+  } catch (error) {
+    return fail(error);
+  }
+
+  refreshProspect(id);
+  return {
+    ok: true,
+    message: accepted
+      ? "Won't warn about this one again."
+      : "Warning restored for this prospect.",
+  };
+}
+
 // ---------- CRUD ----------
 
 export async function createProspectAction(

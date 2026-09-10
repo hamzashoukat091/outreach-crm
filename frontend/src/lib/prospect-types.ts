@@ -73,6 +73,9 @@ export interface Prospect {
   is_complete: boolean;
   missing_fields: string[];
   company_inferred: boolean;
+  completeness_ack_at: string | null;
+  /** False once the missing info is filled in or deliberately accepted. */
+  needs_company_info: boolean;
   is_archived: boolean;
   archived_at: string | null;
   archive_reason: string | null;

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 import sqlalchemy as sa
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy import true as sa_true
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
@@ -104,9 +104,19 @@ def get_analytics(days: int = Query(30, ge=7, le=180), db: Session = Depends(get
     active = Prospect.is_archived.is_(False)
 
     total = db.scalar(select(func.count(Prospect.id)).where(active)) or 0
+    # A prospect whose missing info you accepted stops counting as incomplete:
+    # the banner it drives is a to-do list, and an item you have ruled on does
+    # not belong on it. `is_complete` itself is untouched, so the underlying
+    # data quality is still recoverable.
     complete = (
         db.scalar(
-            select(func.count(Prospect.id)).where(active, Prospect.is_complete.is_(True))
+            select(func.count(Prospect.id)).where(
+                active,
+                or_(
+                    Prospect.is_complete.is_(True),
+                    Prospect.completeness_ack_at.isnot(None),
+                ),
+            )
         )
         or 0
     )

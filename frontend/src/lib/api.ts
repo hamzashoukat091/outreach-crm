@@ -198,6 +198,18 @@ export const api = {
       body: JSON.stringify({ reason: reason ?? null }),
     }),
 
+  acceptMissingInfo: (id: string) =>
+    request<Prospect>(`/api/prospects/${id}/accept-missing-info`, { method: "POST" }),
+
+  unacceptMissingInfo: (id: string) =>
+    request<Prospect>(`/api/prospects/${id}/unaccept-missing-info`, { method: "POST" }),
+
+  bulkAcceptMissingInfo: (ids: string[]) =>
+    request<{ updated: number; total: number }>(
+      "/api/prospects/bulk-accept-missing-info",
+      { method: "POST", body: JSON.stringify({ ids }) },
+    ),
+
   unarchiveProspect: (id: string) =>
     request<Prospect>(`/api/prospects/${id}/unarchive`, { method: "POST" }),
 

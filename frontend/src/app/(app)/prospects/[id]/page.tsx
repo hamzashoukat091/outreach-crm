@@ -4,13 +4,13 @@ import { api } from "@/lib/api";
 import { AutomationConversation } from "@/components/automation-conversation";
 import { CopyButton } from "@/components/copy-button";
 import { EnrollmentReset } from "@/components/enrollment-reset";
+import { IncompleteWarning } from "@/components/incomplete-warning";
 import { ProspectEdit } from "@/components/prospect-edit";
 import { PipelineModeBadge } from "@/components/automation-ui";
 import { DraftCard } from "@/components/draft-card";
 import { ProspectPanel } from "@/components/prospect-panel";
 import {
   EmailStatusBadge,
-  IncompleteWarning,
   ProspectStatusBadge,
 } from "@/components/prospect-ui";
 import { EmptyState, Tag, formatDate } from "@/components/ui";
@@ -119,8 +119,10 @@ export default async function ProspectDetailPage({
         <div className="space-y-6 lg:col-span-2">
           {!prospect.is_complete && (
             <IncompleteWarning
+              prospectId={prospect.id}
               missing={prospect.missing_fields}
               inferred={prospect.company_inferred}
+              accepted={!prospect.needs_company_info}
             />
           )}
 

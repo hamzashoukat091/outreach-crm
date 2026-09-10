@@ -141,6 +141,19 @@ class Prospect(Base):
     is_complete: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     missing_fields: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     company_inferred: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Set when you have seen the missing-info warning for this prospect and
+    # decided it is fine as it is. Kept apart from is_complete, which records
+    # what the import actually contained -- overwriting that to silence a
+    # warning would lose the only evidence of a thin export, and the next
+    # import would recompute it back anyway.
+    completeness_ack_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+
+    @property
+    def needs_company_info(self) -> bool:
+        """Whether to warn. Missing data you have accepted is not a warning."""
+        return not self.is_complete and self.completeness_ack_at is None
 
     # Archiving is deliberately a flag, not a status: setting status='archived'
     # would erase whether they replied or bounced. A shelved prospect keeps its

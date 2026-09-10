@@ -92,6 +92,11 @@ class ProspectOut(ORMModel, ProspectBase):
     is_complete: bool
     missing_fields: list[str]
     company_inferred: bool
+    completeness_ack_at: datetime | None = None
+    # What the UI should act on: missing data you have accepted is not a
+    # warning. Sent rather than derived client-side so the table badge, the
+    # detail page and the banner cannot disagree.
+    needs_company_info: bool = False
     is_archived: bool = False
     archived_at: datetime | None = None
     archive_reason: str | None = None

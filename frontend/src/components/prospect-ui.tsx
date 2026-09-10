@@ -116,29 +116,3 @@ export function EmailStatusBadge({ status }: { status: string | null }) {
     </span>
   );
 }
-
-/** Warns on the prospect record itself when company data is missing. */
-export function IncompleteWarning({
-  missing,
-  inferred,
-}: {
-  missing: string[];
-  inferred: boolean;
-}) {
-  if (!missing.length) return null;
-
-  const pretty = missing.map((f) => f.replace("company_", "").replace("_", " ")).join(", ");
-
-  return (
-    <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm dark:border-amber-800 dark:bg-amber-950">
-      <p className="font-medium text-amber-900 dark:text-amber-200">
-        Missing company info
-      </p>
-      <p className="mt-1 text-amber-800 dark:text-amber-300">
-        No {pretty} in the import.
-        {inferred && " The company name was derived from the email domain."} Generated
-        emails will rely on the job title alone — fill these in below for a stronger email.
-      </p>
-    </div>
-  );
-}

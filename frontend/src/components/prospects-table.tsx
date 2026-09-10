@@ -485,8 +485,12 @@ export function ProspectsTable({
                     <p className="truncate text-xs">
                       {prospect.industry ? (
                         <span className="text-muted">{prospect.industry}</span>
-                      ) : (
+                      ) : prospect.needs_company_info ? (
                         <span className="text-amber-600">Needs company info</span>
+                      ) : (
+                        // Accepted: still no industry, but you ruled on it, so
+                        // it reads as a fact rather than an outstanding task.
+                        <span className="text-muted/70">No industry</span>
                       )}
                       {prospect.category && (
                         <span className="text-muted/70"> · {prospect.category}</span>
