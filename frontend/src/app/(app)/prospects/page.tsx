@@ -24,6 +24,8 @@ export default async function ProspectsPage({
     category?: string;
     completeness?: string;
     sent?: string;
+    sequence?: string;
+    step?: string;
     sort?: string;
     direction?: string;
     per?: string;
@@ -43,8 +45,9 @@ export default async function ProspectsPage({
   let strategies;
   let analytics;
   let categories;
+  let sequences;
   try {
-    [data, strategies, analytics, categories] = await Promise.all([
+    [data, strategies, analytics, categories, sequences] = await Promise.all([
       api.listProspects({
         q: params.q,
         status: params.status,
@@ -52,6 +55,8 @@ export default async function ProspectsPage({
         category: params.category,
         completeness: params.completeness,
         sent_within: params.sent,
+        sequence_id: params.sequence,
+        step: params.step ? Number(params.step) : undefined,
         sort: params.sort,
         direction: params.direction,
         archived: archivedView,
@@ -61,6 +66,7 @@ export default async function ProspectsPage({
       api.listStrategies(),
       api.analytics().catch(() => null),
       api.listProspectCategories().catch(() => []),
+      api.listAutomationSequences().catch(() => []),
     ]);
   } catch {
     return (
@@ -132,7 +138,7 @@ export default async function ProspectsPage({
 
       {!archivedView && (
         <Suspense fallback={null}>
-          <ProspectToolbar categories={categories} />
+          <ProspectToolbar categories={categories} sequences={sequences} />
         </Suspense>
       )}
 
@@ -148,6 +154,8 @@ export default async function ProspectsPage({
           category: params.category,
           completeness: params.completeness,
           sent_within: params.sent,
+          sequence_id: params.sequence,
+          step: params.step,
           sort: params.sort,
           direction: params.direction,
           archived: archivedView,

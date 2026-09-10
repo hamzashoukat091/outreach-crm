@@ -234,6 +234,12 @@ class ProspectFilters:
             pattern="^(hour|day)$",
             description="Prospects mailed in the last rolling hour or 24 hours",
         ),
+        sequence_id: uuid.UUID | None = Query(
+            None, description="Prospects with an open enrollment in this sequence"
+        ),
+        step: int | None = Query(
+            None, ge=0, le=50, description="How many steps have been sent to them"
+        ),
     ):
         self.q = q
         self.status = prospect_status
@@ -244,6 +250,8 @@ class ProspectFilters:
         self.has_draft = has_draft
         self.archived = archived
         self.sent_within = sent_within
+        self.sequence_id = sequence_id
+        self.step = step
 
 
 def _filtered(stmt, f: ProspectFilters):
@@ -291,6 +299,29 @@ def _filtered(stmt, f: ProspectFilters):
             Prospect.is_complete.is_(False),
             Prospect.completeness_ack_at.is_(None),
         )
+
+    # Sequence and step both match on the OPEN enrollment, which is the one
+    # the table's Pipeline column shows. Matching any enrollment would return
+    # prospects whose row says "Step 2 of 3" for a filter of step 0, because a
+    # finished older run also matched.
+    if f.sequence_id is not None or f.step is not None:
+        open_enrollment = select(SequenceEnrollment.prospect_id).where(
+            SequenceEnrollment.state.in_(
+                (EnrollmentState.active, EnrollmentState.paused)
+            )
+        )
+        if f.sequence_id is not None:
+            open_enrollment = open_enrollment.where(
+                SequenceEnrollment.sequence_id == f.sequence_id
+            )
+        if f.step is not None:
+            # current_position is how many steps have been SENT, so 0 is
+            # "enrolled, nothing gone out yet" -- the biggest group, and the
+            # one worth being able to find.
+            open_enrollment = open_enrollment.where(
+                SequenceEnrollment.current_position == f.step
+            )
+        stmt = stmt.where(Prospect.id.in_(open_enrollment.distinct()))
 
     if f.sent_within:
         # The same rolling window and the same definition of "sent" the rate

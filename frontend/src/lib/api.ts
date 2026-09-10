@@ -137,6 +137,8 @@ export const api = {
       category?: string;
       completeness?: string;
       sent_within?: string;
+      sequence_id?: string;
+      step?: number;
       has_draft?: boolean;
       archived?: boolean;
       sort?: string;
@@ -163,6 +165,8 @@ export const api = {
       category?: string;
       completeness?: string;
       sent_within?: string;
+      sequence_id?: string;
+      step?: number;
       has_draft?: boolean;
       archived?: boolean;
       sort?: string;

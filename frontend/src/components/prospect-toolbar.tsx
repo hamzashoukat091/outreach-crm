@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createProspectAction, importProspectsAction } from "@/app/prospect-actions";
 import type { CategoryCount } from "@/lib/prospect-types";
+import type { AutomationSequence } from "@/lib/types";
 import { Toast, useToast } from "@/components/toast";
 
 // 'archived' is deliberately absent: archiving is a separate flag with its own
@@ -25,8 +26,10 @@ const STATUS_LABEL: Record<string, string> = {
 
 export function ProspectToolbar({
   categories = [],
+  sequences = [],
 }: {
   categories?: CategoryCount[];
+  sequences?: AutomationSequence[];
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -61,6 +64,10 @@ export function ProspectToolbar({
       }
     }
   }, [importState, show, router]);
+
+  // The step dropdown's options come from the chosen sequence, so it only
+  // appears once one is chosen.
+  const activeSequence = sequences.find((s) => s.id === params.get("sequence"));
 
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(params.toString());
@@ -156,6 +163,56 @@ export function ProspectToolbar({
             <option value="sent:day">Mailed in the last 24 hours</option>
           </optgroup>
         </select>
+
+        {/* Which sequence someone is running, and how far in. Both match the
+            OPEN enrollment -- the one the Pipeline column shows -- so the
+            filter and the row can never disagree. */}
+        {sequences.length > 0 && (
+          <select
+            value={params.get("sequence") ?? ""}
+            onChange={(e) => {
+              const next = new URLSearchParams(params.toString());
+              next.delete("page");
+              // The step numbers belong to the sequence that was chosen, so a
+              // step filter cannot survive changing it.
+              next.delete("step");
+              if (e.target.value) next.set("sequence", e.target.value);
+              else next.delete("sequence");
+              router.push(`/prospects?${next.toString()}`);
+            }}
+            aria-label="Filter by sequence"
+            className="input min-h-11 w-full min-w-0 text-sm sm:h-9 sm:w-auto sm:py-0"
+          >
+            <option value="">All sequences</option>
+            {sequences.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+                {s.open_enrollments ? ` (${s.open_enrollments})` : ""}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* Only once a sequence is picked: "step 2" means nothing across two
+            sequences with different steps. */}
+        {activeSequence && activeSequence.step_count > 0 && (
+          <select
+            value={params.get("step") ?? ""}
+            onChange={(e) => setParam("step", e.target.value)}
+            aria-label="Filter by step reached"
+            className="input min-h-11 w-full min-w-0 text-sm sm:h-9 sm:w-auto sm:py-0"
+          >
+            <option value="">Any step</option>
+            {/* 0 is "enrolled, nothing sent yet", which is usually the largest
+                group and the one people are actually looking for. */}
+            <option value="0">Not started</option>
+            {Array.from({ length: activeSequence.step_count }, (_, i) => (
+              <option key={i + 1} value={i + 1}>
+                {i + 1} sent
+              </option>
+            ))}
+          </select>
+        )}
 
         {categories.length > 0 && (
           <select
